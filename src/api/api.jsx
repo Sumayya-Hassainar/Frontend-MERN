@@ -1,5 +1,5 @@
 // src/api/api.jsx
-const API_BASE = import.meta.env.VITE_API_URL ||"http://backend-mern-4-gurp.onrender.com/"
+const API_BASE = import.meta.env.VITE_API_URL ||"http://localhost:3000/api"
 
 // ---------- PRODUCTS ----------
 export async function fetchProducts() {
