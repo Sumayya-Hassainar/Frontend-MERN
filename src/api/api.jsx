@@ -182,7 +182,7 @@ export async function createPayment(paymentPayload) {
 
 // ---------- ORDER STATUSES ----------
 export async function fetchOrderStatuses() {
-  const res = await fetch(`${API_BASE}/order-status`, {
+  const res = await fetch(`${API_BASE}/order-statuses`, {
     method: "GET",
     headers: getAuthHeaders(),
   });
@@ -197,7 +197,7 @@ export async function fetchOrderStatuses() {
 
 // Get single status by id – optional
 export async function fetchOrderStatusById(id) {
-  const res = await fetch(`${API_BASE}/order-status/${id}`, {
+  const res = await fetch(`${API_BASE}/order-statuses/${id}`, {
     method: "GET",
     headers: getAuthHeaders(),
   });
