@@ -2,7 +2,7 @@
 
 // Base URL – override in .env for production:
 const API_BASE =
-  import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+  import.meta.env.VITE_API_URL || "https://backend-mern-ex49.onrender.com/api";
 
 // Helper: get default headers with optional auth
 function getAuthHeaders(extra = {}) {
