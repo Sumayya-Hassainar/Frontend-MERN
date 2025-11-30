@@ -1,17 +1,37 @@
 // src/api/api.jsx
-const API_BASE = import.meta.env.VITE_API_URL ||"http://localhost:3000/api"
+
+// Base URL – override in .env for production:
+const API_BASE =
+  import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+
+// Helper: get default headers with optional auth
+function getAuthHeaders(extra = {}) {
+  const token = localStorage.getItem("token");
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...extra,
+  };
+}
 
 // ---------- PRODUCTS ----------
 export async function fetchProducts() {
   const res = await fetch(`${API_BASE}/products`);
-  if (!res.ok) throw new Error("Failed to fetch products");
-  return res.json();
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to fetch products");
+  }
+  return data;
 }
 
 export async function fetchProductById(id) {
   const res = await fetch(`${API_BASE}/products/${id}`);
-  if (!res.ok) throw new Error("Failed to fetch product");
-  return res.json();
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to fetch product");
+  }
+  return data;
 }
 
 // ---------- AUTH ----------
@@ -22,11 +42,12 @@ export async function registerUser(payload) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
     throw new Error(data.message || "Registration failed");
   }
-  return res.json();
+  return data;
 }
 
 export async function loginUser(payload) {
@@ -36,27 +57,27 @@ export async function loginUser(payload) {
     body: JSON.stringify(payload),
   });
 
+  const data = await res.json().catch(() => ({}));
+
   if (!res.ok) {
     let message = "Login failed";
-    try {
-      const data = await res.json();
-      if (data?.message) message = data.message;
-    } catch {}
+    if (data?.message) message = data.message;
     throw new Error(message);
   }
 
-  return res.json(); // { token, ... }
+  // backend (including fixed admin) returns { _id, name, email, role, token, ... }
+  return data;
 }
 
 // ---------- ORDERS ----------
 
 // Admin-only: fetch all orders
 export async function fetchOrders() {
-  const token = localStorage.getItem("token");
   const res = await fetch(`${API_BASE}/orders`, {
     method: "GET",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: getAuthHeaders(),
   });
+
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(data.message || "Failed to fetch orders");
@@ -66,11 +87,11 @@ export async function fetchOrders() {
 
 // Customer: fetch logged-in user’s orders
 export async function fetchMyOrders() {
-  const token = localStorage.getItem("token");
   const res = await fetch(`${API_BASE}/orders/my`, {
     method: "GET",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: getAuthHeaders(),
   });
+
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(data.message || "Failed to fetch my orders");
@@ -80,15 +101,12 @@ export async function fetchMyOrders() {
 
 // Create a new order
 export async function createOrder(payload) {
-  const token = localStorage.getItem("token");
   const res = await fetch(`${API_BASE}/orders`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(payload),
   });
+
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(data.message || "Failed to place order");
@@ -98,15 +116,13 @@ export async function createOrder(payload) {
 
 // Fetch a single order by ID (for order details page)
 export async function fetchOrderById(orderId) {
-  const token = localStorage.getItem("token");
-
   if (!orderId) {
     throw new Error("Order ID is required");
   }
 
   const res = await fetch(`${API_BASE}/orders/${orderId}`, {
     method: "GET",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: getAuthHeaders(),
   });
 
   const data = await res.json().catch(() => ({}));
@@ -120,15 +136,12 @@ export async function fetchOrderById(orderId) {
 
 // ---------- STRIPE PAYMENTS ----------
 export async function createStripeCheckoutSession(productsPayload) {
-  const token = localStorage.getItem("token");
   const res = await fetch(`${API_BASE}/payments/create-checkout-session`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ products: productsPayload }),
   });
+
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(data.message || "Failed to create checkout session");
@@ -137,14 +150,14 @@ export async function createStripeCheckoutSession(productsPayload) {
 }
 
 export async function fetchStripeSessionStatus(sessionId) {
-  const token = localStorage.getItem("token");
   const res = await fetch(
     `${API_BASE}/payments/session-status?session_id=${sessionId}`,
     {
       method: "GET",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: getAuthHeaders(),
     }
   );
+
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(data.message || "Failed to fetch session status");
@@ -154,51 +167,45 @@ export async function fetchStripeSessionStatus(sessionId) {
 
 // ---------- PAYMENTS ----------
 export async function createPayment(paymentPayload) {
-  const token = localStorage.getItem("token");
   const res = await fetch(`${API_BASE}/payments`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(paymentPayload),
   });
+
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(data.message || "Failed to create payment");
   }
   return data;
 }
-// ---------- ORDER STATUSES (ADMIN + PUBLIC FETCH) ----------
 
-// Get all statuses (for admin screen, if needed)
+// ---------- ORDER STATUSES ----------
 export async function fetchOrderStatuses() {
-  const token = localStorage.getItem("token");
   const res = await fetch(`${API_BASE}/order-status`, {
     method: "GET",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: getAuthHeaders(),
   });
 
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
     throw new Error(data.message || "Failed to fetch order statuses");
   }
 
-  return res.json();
+  return data;
 }
 
-// (Optional) Get single status by id – probably not needed for tracking UI
+// Get single status by id – optional
 export async function fetchOrderStatusById(id) {
-  const token = localStorage.getItem("token");
   const res = await fetch(`${API_BASE}/order-status/${id}`, {
     method: "GET",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: getAuthHeaders(),
   });
 
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
     throw new Error(data.message || "Failed to fetch order status");
   }
 
-  return res.json();
+  return data;
 }
