@@ -2,7 +2,7 @@
 
 // Base URL – override in .env for production:
 const API_BASE =
-  import.meta.env.VITE_API_URL || "https://backend-mern-ex49.onrender.com/api";
+  import.meta.env.VITE_API_URL || "https://backend-mern-ex49.onrender.com";
 
 // Helper: get default headers with optional auth
 function getAuthHeaders(extra = {}) {
@@ -64,9 +64,16 @@ export async function loginUser(payload) {
     if (data?.message) message = data.message;
     throw new Error(message);
   }
-
   // backend (including fixed admin) returns { _id, name, email, role, token, ... }
   return data;
+}
+export async function verifyOtp(data) {
+  const res = await fetch(`${API_BASE}/users/verify-otp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return res.json();
 }
 
 // ---------- ORDERS ----------

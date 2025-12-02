@@ -1,5 +1,5 @@
 // src/api/adminapi.jsx
-const API_BASE = import.meta.env.VITE_API_URL || "https://backend-mern-ex49.onrender.com/api";
+const API_BASE = import.meta.env.VITE_API_URL || "https://backend-mern-ex49.onrender.com";
 
 function getAuthHeaders() {
   const token = localStorage.getItem("token");
