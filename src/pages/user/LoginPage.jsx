@@ -1,6 +1,5 @@
-// src/pages/LoginPage.jsx
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { loginUser, verifyOtp } from "../../api/api";
 
 export default function LoginPage({ setRole }) {
@@ -8,126 +7,93 @@ export default function LoginPage({ setRole }) {
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [otp, setOtp] = useState("");
-  const [step, setStep] = useState(1); // 1 = login → 2 = OTP verify
-  const [tempUserId, setTempUserId] = useState(null);
+  const [step, setStep] = useState(1); // 1 = login, 2 = OTP
   const [error, setError] = useState("");
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  // STEP 1 → LOGIN + SEND OTP
-  const handleLogin = async (e) => {
+  // Step 1: Submit email + password → send OTP
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
     try {
-      const res = await loginUser(form); 
-      // response → { message: "OTP sent", userId }
-
-      setTempUserId(res.userId);
+      const res = await loginUser(form);
+      console.log(res);
       setStep(2); // move to OTP screen
     } catch (err) {
-      setError(err.message || "Login failed");
+      setError(err.message);
     }
   };
 
-  // STEP 2 → VERIFY OTP
-  const handleVerifyOtp = async (e) => {
+  // Step 2: Verify OTP
+  const handleOtpSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
     try {
-      const data = await verifyOtp({ userId: tempUserId, otp });
+      const res = await verifyOtp({ email: form.email, otp });
 
-      // data → { token, role, name, email }
+      // Save info
+      localStorage.setItem("token", res.token);
+      localStorage.setItem("role", res.role);
+      localStorage.setItem("userName", res.user?.name);
 
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("role", data.role);
-      localStorage.setItem("userName", data.name);
+      if (setRole) setRole(res.role);
 
-      if (setRole) setRole(data.role);
-
-      // Redirect by role
-      if (data.role === "admin") {
-        navigate("/admin/panel");
-      } else if (data.role === "vendor") {
-        navigate("/vendor");
-      } else {
-        navigate("/products");
-      }
+      if (res.role === "admin") navigate("/admin/panel");
+      else if (res.role === "vendor") navigate("/vendor");
+      else navigate("/products");
     } catch (err) {
-      setError(err.message || "OTP Verification Failed");
+      setError(err.message || "Invalid OTP");
     }
   };
 
   return (
     <div className="max-w-md mx-auto px-4 py-8">
-      <h1 className="text-xl font-semibold mb-4">
-        {step === 1 ? "Login" : "Verify OTP"}
-      </h1>
+      <h1 className="text-xl font-semibold mb-4">Login</h1>
 
-      {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
+      {error && <p className="text-red-600">{error}</p>}
 
-      {/* STEP 1 — LOGIN */}
       {step === 1 && (
-        <form onSubmit={handleLogin} className="space-y-3 bg-white p-4 rounded-lg border">
+        <form onSubmit={handleLoginSubmit} className="space-y-3">
           <input
-            type="email"
             name="email"
             placeholder="Email"
+            type="email"
             value={form.email}
             onChange={handleChange}
-            required
-            className="w-full border rounded px-3 py-2 text-sm"
+            className="w-full border px-3 py-2"
           />
           <input
-            type="password"
             name="password"
             placeholder="Password"
+            type="password"
             value={form.password}
             onChange={handleChange}
-            required
-            className="w-full border rounded px-3 py-2 text-sm"
+            className="w-full border px-3 py-2"
           />
-
-          <button
-            type="submit"
-            className="w-full bg-indigo-600 text-white py-2 rounded-md text-sm font-medium hover:bg-indigo-700"
-          >
+          <button className="w-full bg-indigo-600 text-white py-2">
             Send OTP
           </button>
         </form>
       )}
 
-      {/* STEP 2 — OTP VERIFY */}
       {step === 2 && (
-        <form onSubmit={handleVerifyOtp} className="space-y-3 bg-white p-4 rounded-lg border">
+        <form onSubmit={handleOtpSubmit} className="space-y-3">
           <input
             type="text"
             placeholder="Enter OTP"
             value={otp}
             onChange={(e) => setOtp(e.target.value)}
-            required
-            className="w-full border rounded px-3 py-2 text-sm"
+            className="w-full border px-3 py-2"
           />
-
-          <button
-            type="submit"
-            className="w-full bg-green-600 text-white py-2 rounded-md text-sm font-medium hover:bg-green-700"
-          >
+          <button className="w-full bg-green-600 text-white py-2">
             Verify OTP
           </button>
         </form>
-      )}
-
-      {step === 1 && (
-        <p className="mt-3 text-xs text-gray-600">
-          Don’t have an account?{" "}
-          <Link to="/register" className="text-indigo-600 hover:underline">
-            Register
-          </Link>
-        </p>
       )}
     </div>
   );
