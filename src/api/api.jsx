@@ -4,7 +4,7 @@
 const API_BASE =
   import.meta.env.VITE_API_URL || "https://backend-mern-ex49.onrender.com/api";
 
-// Helper: get default headers with optional auth
+// Helper: auth headers
 function getAuthHeaders(extra = {}) {
   const token = localStorage.getItem("token");
   return {
@@ -13,43 +13,24 @@ function getAuthHeaders(extra = {}) {
   };
 }
 
-// ---------- PRODUCTS ----------
-export async function fetchProducts() {
-  const res = await fetch(`${API_BASE}/products`);
-  const data = await res.json().catch(() => ({}));
+/* -----------------------------------
+   AUTH SECTION
+----------------------------------- */
 
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to fetch products");
-  }
-  return data;
-}
-
-export async function fetchProductById(id) {
-  const res = await fetch(`${API_BASE}/products/${id}`);
-  const data = await res.json().catch(() => ({}));
-
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to fetch product");
-  }
-  return data;
-}
-
-// ---------- AUTH ----------
+// REGISTER (same)
 export async function registerUser(payload) {
-  const url = `${API_BASE}/users/register`;
-  const res = await fetch(url, {
+  const res = await fetch(`${API_BASE}/users/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Registration failed");
-  }
+  if (!res.ok) throw new Error(data.message || "Registration failed");
   return data;
 }
 
+// LOGIN — updated to handle admin / new user / existing user flow
 export async function loginUser(payload) {
   const res = await fetch(`${API_BASE}/users/login`, {
     method: "POST",
@@ -60,53 +41,81 @@ export async function loginUser(payload) {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    let message = "Login failed";
-    if (data?.message) message = data.message;
-    throw new Error(message);
+    throw new Error(data.message || "Login failed");
   }
-  // backend (including fixed admin) returns { _id, name, email, role, token, ... }
+
+  // Backend returns one of these:
+  // 1. { token, role, user } → admin or NEW user
+  // 2. { otp_required: true, email, role } → existing vendor/customer
+  // 3. { message: "Failed to send OTP" } → dummy email for existing user
+
   return data;
 }
-export async function verifyOtp(data) {
+
+// OTP VERIFY — no change, works for dummy OTP too
+export async function verifyOtp(payload) {
   const res = await fetch(`${API_BASE}/users/verify-otp`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
-  return res.json();
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data.message || "OTP verification failed");
+  }
+
+  return data;
 }
 
-// ---------- ORDERS ----------
+/* -----------------------------------
+   PRODUCTS
+----------------------------------- */
 
-// Admin-only: fetch all orders
+export async function fetchProducts() {
+  const res = await fetch(`${API_BASE}/products`);
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) throw new Error(data.message || "Failed to fetch products");
+  return data;
+}
+
+export async function fetchProductById(id) {
+  const res = await fetch(`${API_BASE}/products/${id}`);
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) throw new Error(data.message || "Failed to fetch product");
+  return data;
+}
+
+/* -----------------------------------
+   ORDERS
+----------------------------------- */
+
+// Admin: all orders
 export async function fetchOrders() {
   const res = await fetch(`${API_BASE}/orders`, {
-    method: "GET",
     headers: getAuthHeaders(),
   });
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to fetch orders");
-  }
+  if (!res.ok) throw new Error(data.message || "Failed to fetch orders");
   return data;
 }
 
-// Customer: fetch logged-in user’s orders
+// Customer: my orders
 export async function fetchMyOrders() {
   const res = await fetch(`${API_BASE}/orders/my`, {
-    method: "GET",
     headers: getAuthHeaders(),
   });
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to fetch my orders");
-  }
+  if (!res.ok) throw new Error(data.message || "Failed to fetch my orders");
   return data;
 }
 
-// Create a new order
+// Place order
 export async function createOrder(payload) {
   const res = await fetch(`${API_BASE}/orders`, {
     method: "POST",
@@ -115,104 +124,94 @@ export async function createOrder(payload) {
   });
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to place order");
-  }
+  if (!res.ok) throw new Error(data.message || "Failed to place order");
   return data;
 }
 
-// Fetch a single order by ID (for order details page)
+// Order by ID
 export async function fetchOrderById(orderId) {
-  if (!orderId) {
-    throw new Error("Order ID is required");
-  }
+  if (!orderId) throw new Error("Order ID is required");
 
   const res = await fetch(`${API_BASE}/orders/${orderId}`, {
-    method: "GET",
     headers: getAuthHeaders(),
   });
 
   const data = await res.json().catch(() => ({}));
-
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to fetch order");
-  }
-
+  if (!res.ok) throw new Error(data.message || "Failed to fetch order");
   return data;
 }
 
-// ---------- STRIPE PAYMENTS ----------
-export async function createStripeCheckoutSession(productsPayload) {
+/* -----------------------------------
+   STRIPE PAYMENT
+----------------------------------- */
+
+export async function createStripeCheckoutSession(payload) {
   const res = await fetch(`${API_BASE}/payments/create-checkout-session`, {
     method: "POST",
     headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ products: productsPayload }),
+    body: JSON.stringify({ products: payload }),
   });
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
+  if (!res.ok)
     throw new Error(data.message || "Failed to create checkout session");
-  }
+
   return data;
 }
 
 export async function fetchStripeSessionStatus(sessionId) {
   const res = await fetch(
     `${API_BASE}/payments/session-status?session_id=${sessionId}`,
-    {
-      method: "GET",
-      headers: getAuthHeaders(),
-    }
+    { headers: getAuthHeaders() }
   );
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
+  if (!res.ok)
     throw new Error(data.message || "Failed to fetch session status");
-  }
+
   return data;
 }
 
-// ---------- PAYMENTS ----------
-export async function createPayment(paymentPayload) {
+/* -----------------------------------
+   PAYMENT RECORD CREATION
+----------------------------------- */
+
+export async function createPayment(payload) {
   const res = await fetch(`${API_BASE}/payments`, {
     method: "POST",
     headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(paymentPayload),
+    body: JSON.stringify(payload),
   });
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to create payment");
-  }
+  if (!res.ok) throw new Error(data.message || "Failed to create payment");
   return data;
 }
 
-// ---------- ORDER STATUSES ----------
+/* -----------------------------------
+   ORDER STATUSES
+----------------------------------- */
+
 export async function fetchOrderStatuses() {
   const res = await fetch(`${API_BASE}/order-statuses`, {
-    method: "GET",
     headers: getAuthHeaders(),
   });
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
+  if (!res.ok)
     throw new Error(data.message || "Failed to fetch order statuses");
-  }
 
   return data;
 }
 
-// Get single status by id – optional
 export async function fetchOrderStatusById(id) {
   const res = await fetch(`${API_BASE}/order-statuses/${id}`, {
-    method: "GET",
     headers: getAuthHeaders(),
   });
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
+  if (!res.ok)
     throw new Error(data.message || "Failed to fetch order status");
-  }
 
   return data;
 }
