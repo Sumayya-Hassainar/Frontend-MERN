@@ -15,12 +15,13 @@ export default function AdminPanel() {
 
   const navigate = useNavigate();
 
+  // Fetch pending vendor requests
   const loadRequests = async () => {
     setLoading(true);
     setError("");
     try {
       const data = await fetchPendingVendors();
-      // backend can return [ ... ] or { vendors: [...] }
+      // backend may return array or { vendors: [...] }
       setRequests(Array.isArray(data) ? data : data.vendors || []);
     } catch (err) {
       console.error("Fetch vendor requests error:", err);
@@ -40,7 +41,7 @@ export default function AdminPanel() {
     setError("");
     try {
       await approveVendorRequest(id);
-      await loadRequests();
+      setRequests((prev) => prev.filter((r) => r._id !== id));
     } catch (err) {
       console.error("Approve error:", err);
       setError(err.message || "Failed to approve vendor request");
@@ -55,7 +56,7 @@ export default function AdminPanel() {
     setError("");
     try {
       await rejectVendorRequest(id);
-      await loadRequests();
+      setRequests((prev) => prev.filter((r) => r._id !== id));
     } catch (err) {
       console.error("Reject error:", err);
       setError(err.message || "Failed to reject vendor request");
@@ -94,20 +95,12 @@ export default function AdminPanel() {
       <section className="bg-white border rounded-lg p-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold">Vendor Requests</h2>
-          {loading && (
-            <span className="text-xs text-gray-500">Loading requests...</span>
-          )}
-          {actionLoading && !loading && (
-            <span className="text-xs text-gray-500">
-              Processing action...
-            </span>
-          )}
+          {loading && <span className="text-xs text-gray-500">Loading requests...</span>}
+          {actionLoading && !loading && <span className="text-xs text-gray-500">Processing action...</span>}
         </div>
 
         {requests.length === 0 && !loading ? (
-          <p className="text-sm text-gray-600">
-            No pending vendor requests at the moment.
-          </p>
+          <p className="text-sm text-gray-600">No pending vendor requests at the moment.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm border">
@@ -123,15 +116,11 @@ export default function AdminPanel() {
               <tbody>
                 {requests.map((req) => (
                   <tr key={req._id}>
-                    <td className="border px-3 py-2">{req.name}</td>
-                    <td className="border px-3 py-2">{req.email}</td>
+                    <td className="border px-3 py-2">{req.name || "-"}</td>
+                    <td className="border px-3 py-2">{req.email || "-"}</td>
+                    <td className="border px-3 py-2">{req.shopName || "-"}</td>
                     <td className="border px-3 py-2">
-                      {req.shopName || "-"}
-                    </td>
-                    <td className="border px-3 py-2">
-                      {req.createdAt
-                        ? new Date(req.createdAt).toLocaleString()
-                        : "-"}
+                      {req.createdAt ? new Date(req.createdAt).toLocaleString() : "-"}
                     </td>
                     <td className="border px-3 py-2">
                       <div className="flex gap-2">
