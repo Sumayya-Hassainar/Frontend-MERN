@@ -17,7 +17,7 @@ function getAuthHeaders(extra = {}) {
    AUTH SECTION
 ----------------------------------- */
 
-// REGISTER (same)
+// REGISTER
 export async function registerUser(payload) {
   const res = await fetch(`${API_BASE}/users/register`, {
     method: "POST",
@@ -30,7 +30,22 @@ export async function registerUser(payload) {
   return data;
 }
 
-// LOGIN — updated to handle admin / new user / existing user flow
+/* -----------------------------------
+   LOGIN LOGIC (UPDATED)
+-----------------------------------
+
+Backend sends:
+
+ADMIN
+→ { token, role: "admin", user }
+
+VENDOR (NO OTP)
+→ { token, role: "vendor", user }
+
+CUSTOMER
+→ FIRST LOGIN → { token, role: "customer", user }
+→ OLD LOGIN → { otp_required: true, email, role: "customer" }
+*/
 export async function loginUser(payload) {
   const res = await fetch(`${API_BASE}/users/login`, {
     method: "POST",
@@ -44,15 +59,12 @@ export async function loginUser(payload) {
     throw new Error(data.message || "Login failed");
   }
 
-  // Backend returns one of these:
-  // 1. { token, role, user } → admin or NEW user
-  // 2. { otp_required: true, email, role } → existing vendor/customer
-  // 3. { message: "Failed to send OTP" } → dummy email for existing user
-
   return data;
 }
 
-// OTP VERIFY — no change, works for dummy OTP too
+/* -----------------------------------
+   OTP VERIFY (CUSTOMERS ONLY)
+----------------------------------- */
 export async function verifyOtp(payload) {
   const res = await fetch(`${API_BASE}/users/verify-otp`, {
     method: "POST",
@@ -72,7 +84,6 @@ export async function verifyOtp(payload) {
 /* -----------------------------------
    PRODUCTS
 ----------------------------------- */
-
 export async function fetchProducts() {
   const res = await fetch(`${API_BASE}/products`);
   const data = await res.json().catch(() => ({}));
