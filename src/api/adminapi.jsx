@@ -18,7 +18,7 @@ export async function fetchVendors() {
 }
 
 export async function createVendor(payload) {
-  const res = await fetch(`${API_BASE}/admin/vendors`, {
+  const res = await fetch(`${API_BASE}/vendors`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...getAuthHeaders() },
     body: JSON.stringify(payload),
@@ -28,7 +28,7 @@ export async function createVendor(payload) {
 }
 
 export async function updateVendor(id, payload) {
-  const res = await fetch(`${API_BASE}/admin/vendors/${id}`, {
+  const res = await fetch(`${API_BASE}/vendors/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json", ...getAuthHeaders() },
     body: JSON.stringify(payload),
@@ -38,7 +38,7 @@ export async function updateVendor(id, payload) {
 }
 
 export async function deleteVendor(id) {
-  const res = await fetch(`${API_BASE}/admin/vendors/${id}`, {
+  const res = await fetch(`${API_BASE}/vendors/${id}`, {
     method: "DELETE",
     headers: getAuthHeaders(),
   });
