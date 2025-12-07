@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { selectTotalItems } from "../redux/slice/CartSlice.jsx";
-import { fetchProducts } from "../api/api.jsx"; // ✅ ADD THIS
+import { fetchProducts } from "../api/api.jsx";
 
 export default function Header({
   role,
@@ -10,14 +10,13 @@ export default function Header({
   notifications = [],
   unreadCount = 0,
   onMarkAsRead = () => {},
-  query = "",
-  setQuery = () => {},
-  showSearch = false,
+  query,
+  setQuery,
 }) {
   const [theme, setTheme] = useState("light");
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
 
-  // ✅ SEARCH SUGGESTION STATES
+  // ================= PRODUCT SEARCH =================
   const [allProducts, setAllProducts] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -26,10 +25,7 @@ export default function Header({
   const location = useLocation();
   const totalItems = useSelector(selectTotalItems);
 
-  const shouldShowSearch =
-    showSearch || location.pathname === "/" || location.pathname === "/search";
-
-  // ✅ LOAD PRODUCTS ONCE FOR SEARCH
+  // LOAD PRODUCTS FOR SEARCH
   useEffect(() => {
     const loadProducts = async () => {
       try {
@@ -42,28 +38,24 @@ export default function Header({
     loadProducts();
   }, []);
 
-  // ✅ FILTER SUGGESTIONS ON TYPE
+  // FILTER SUGGESTIONS
   useEffect(() => {
-    if (!query.trim()) {
+    if (!query?.trim()) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;
     }
-
     const matches = allProducts
-      .filter((p) =>
-        p.name?.toLowerCase().includes(query.toLowerCase())
-      )
-      .slice(0, 6); // ✅ limit to 6 results
-
+      .filter((p) => p.name?.toLowerCase().includes(query.toLowerCase()))
+      .slice(0, 6);
     setSuggestions(matches);
     setShowSuggestions(true);
   }, [query, allProducts]);
 
+  // ================= THEME =================
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") || "light";
     setTheme(savedTheme);
-
     if (savedTheme === "dark") {
       document.documentElement.classList.add("dark");
     } else {
@@ -85,7 +77,6 @@ export default function Header({
     navigate("/login");
   };
 
-  // ✅ ENTER KEY SEARCH
   const handleSearchSubmit = (e) => {
     if (e.key === "Enter") {
       setShowSuggestions(false);
@@ -105,47 +96,44 @@ export default function Header({
             <span className="text-xs text-yellow-200">Explore Plus</span>
           </Link>
 
-          {/* ✅ LIVE SEARCH */}
-          {shouldShowSearch && (
-            <div className="flex-1 max-w-md ml-4 relative">
-              <div className="flex">
-                <input
-                  type="text"
-                  value={query}
-                  placeholder="Search products..."
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={handleSearchSubmit}
-                  onFocus={() => query && setShowSuggestions(true)}
-                  className="w-full px-3 py-1.5 text-sm text-white rounded-l"
-                />
-                <button
-                  className="bg-white text-black px-4 py-1.5 text-sm rounded-r"
-                  onClick={() => navigate("/search")}
-                >
-                  🔍
-                </button>
-              </div>
+          {/* SEARCH */}
+          <div className="flex-1 flex max-w-md ml-4 relative">
+            <input
+              type="text"
+              value={query}
+              placeholder="Search products..."
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleSearchSubmit}
+              onFocus={() => query && setShowSuggestions(true)}
+              className="w-full px-3 py-1.5 text-sm text-white rounded-l"
+            />
+            <button
+              type="button"
+              className="bg-white text-black px-4 py-1.5 text-sm rounded-r"
+              onClick={() => navigate("/search")}
+            >
+              🔍
+            </button>
 
-              {/* ✅ SUGGESTION DROPDOWN */}
-              {showSuggestions && suggestions.length > 0 && (
-                <div className="absolute left-0 right-0 bg-white text-black rounded shadow-lg mt-1 z-50 max-h-72 overflow-y-auto">
-                  {suggestions.map((item) => (
-                    <div
-                      key={item._id}
-                      onClick={() => {
-                        navigate(`/products/${item._id}`);
-                        setShowSuggestions(false);
-                        setQuery("");
-                      }}
-                      className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 border-b"
-                    >
-                      {item.name}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+            {/* SUGGESTIONS */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute left-0 right-0 bg-white text-black rounded shadow-lg mt-1 z-50 max-h-72 overflow-y-auto">
+                {suggestions.map((item) => (
+                  <div
+                    key={item._id}
+                    onClick={() => {
+                      navigate(`/products/${item._id}`);
+                      setShowSuggestions(false);
+                      setQuery("");
+                    }}
+                    className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 border-b"
+                  >
+                    {item.name}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* DARK MODE */}
           <button
@@ -161,19 +149,16 @@ export default function Header({
               <button onClick={() => setShowNotifDropdown(!showNotifDropdown)}>
                 🔔
               </button>
-
               {unreadCount > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-xs px-1.5 rounded-full">
                   {unreadCount}
                 </span>
               )}
-
               {showNotifDropdown && (
                 <div className="absolute right-0 mt-2 w-72 bg-white text-black rounded shadow-lg">
                   {notifications.length === 0 && (
                     <p className="p-3 text-sm">No notifications</p>
                   )}
-
                   {notifications.map((n) => (
                     <div
                       key={n._id}
@@ -198,7 +183,7 @@ export default function Header({
             </button>
           )}
 
-          {/* CART */}
+          {/* DESKTOP CART */}
           <Link to="/cart" className="hidden md:flex items-center gap-1 relative">
             🛒
             {totalItems > 0 && (
@@ -208,7 +193,7 @@ export default function Header({
             )}
           </Link>
 
-          {/* AUTH */}
+          {/* DESKTOP AUTH */}
           {role === "guest" ? (
             <div className="hidden md:flex gap-2">
               <Link to="/login" className="bg-white text-[#2874F0] px-3 py-1 rounded">
@@ -227,7 +212,33 @@ export default function Header({
             </button>
           )}
         </div>
+
+        {/* DESKTOP BOTTOM NAV */}
+        <div className="hidden md:block bg-[#2463d0]">
+          <div className="max-w-7xl mx-auto px-4 h-10 flex items-center gap-6 text-sm">
+            <Link to="/products">Products</Link>
+            <Link to="/orders">Orders</Link>
+            <Link to="/wishlist">Wishlist</Link>
+            <Link to="/myaccount">My Account</Link>
+            <Link to="/help-desk">💬 Help Desk</Link>
+          </div>
+        </div>
       </header>
+
+      {/* MOBILE BOTTOM NAV */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t md:hidden">
+        <div className="flex justify-around items-center h-14 text-xs">
+          <Link to="/products" className="flex flex-col items-center">🛍️ Products</Link>
+          <Link to="/orders" className="flex flex-col items-center">📦 Orders</Link>
+          {role !== "vendor" && (
+            <Link to="/cart" className="flex flex-col items-center text-blue-600 font-bold">
+              🛒 Cart
+            </Link>
+          )}
+          <Link to="/wishlist" className="flex flex-col items-center">❤️ Wishlist</Link>
+          <Link to="/help-desk" className="flex flex-col items-center">💬 Help</Link>
+        </div>
+      </div>
     </>
   );
 }

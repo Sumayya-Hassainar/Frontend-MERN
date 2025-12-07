@@ -184,3 +184,19 @@ export async function fetchOrderStatusByOrderId(orderId) {
 
   return handleResponse(res);
 }
+export async function fetchCustomerOrders() {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_BASE}/orders/my-orders`, {
+    headers: {
+      Authorization: token ? `Bearer ${token}` : "",
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to fetch orders");
+  }
+
+  return res.json(); // should return array of orders
+}

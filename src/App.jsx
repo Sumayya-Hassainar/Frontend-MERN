@@ -14,6 +14,7 @@ import Home from "./pages/common/Home.jsx";
 import WishlistPage from "./pages/common/WishlistPage.jsx";
 import MyAccount from "./pages/common/MyAccount.jsx";
 import SearchResults from "./pages/common/SearchResults.jsx";
+import HelpDesk from "./pages/common/HelpDesk.jsx";
 
 // User pages
 import Products from "./pages/user/Products.jsx";
@@ -41,14 +42,14 @@ import VendorLoginPage from "./pages/vendor/VendorLoginPage.jsx";
 import VendorDashboard from "./pages/vendor/VendorDashboard.jsx";
 
 // API
-import { fetchMyNotifications, markNotificationAsRead } from "./api/accountapi.jsx";
+import { fetchMyNotifications, markNotificationAsRead } from "./api/accountapi.jsx"
 
 // Wrapper component for Reviews using useParams
 const ProductReviews = ({ role }) => {
   const { id } = useParams();
   return (
     <>
-      <ReviewForm productId={id} onReviewCreated={() => {}} />
+      <ReviewForm productId={id} onReviewCreated={() => { }} />
       <ReviewList productId={id} userRole={role} />
     </>
   );
@@ -109,9 +110,8 @@ function App() {
   return (
     <Provider store={store}>
       <div
-        className={`flex flex-col min-h-screen transition-colors duration-300 ${
-          theme === "dark" ? "bg-white text-black" : "bg-white text-black"
-        }`}
+        className={`flex flex-col min-h-screen transition-colors duration-300 ${theme === "dark" ? "bg-white text-black" : "bg-white text-black"
+          }`}
       >
         {/* Header with live search */}
         <Header
@@ -176,6 +176,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["customer"]}>
                   <OrdersPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/help-desk"
+              element={
+                <ProtectedRoute allowedRoles={["customer", "vendor"]}>
+                  <HelpDesk/>
                 </ProtectedRoute>
               }
             />
