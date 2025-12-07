@@ -1,4 +1,3 @@
-// src/pages/PaymentPage.jsx
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
@@ -24,6 +23,9 @@ export default function PaymentPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // ✅ SUCCESS STATE
+  const [orderPlaced, setOrderPlaced] = useState(false);
+
   const handlePay = async () => {
     try {
       setLoading(true);
@@ -39,25 +41,25 @@ export default function PaymentPage() {
         return;
       }
 
-      // ✅ Normalize shipping address in the format backend expects
+      // ✅ Normalize shipping address
       const shippingAddress = {
         fullName: shipping.name,
         phone: shipping.phone,
         street: shipping.addressLine1,
         city: shipping.city,
         state: shipping.state,
-        country: "India", // or take from shipping.country if you add it
+        country: "India",
         pincode: shipping.pincode,
       };
 
-      // ✅ Build products in the format backend expects
+      // ✅ Format products
       const products = items.map((i) => ({
-        product: i.product._id, // adjust if your cart shape is different
+        product: i.product._id,
         quantity: i.quantity,
         price: i.product.price,
       }));
 
-      // 1) Create order in backend
+      // ✅ Create Order
       const orderPayload = {
         vendor: null,
         products,
@@ -68,18 +70,20 @@ export default function PaymentPage() {
 
       const newOrder = await createOrder(orderPayload);
 
-      // 2) Create payment entry (fake / simulated)
+      // ✅ Create Payment
       const paymentPayload = {
         order: newOrder._id,
         vendor: null,
         amount: totalAmount,
         paymentMethod,
       };
+
       await createPayment(paymentPayload);
 
-      // 3) Clear cart & go to orders page
+      // ✅ Clear cart and show success screen
       dispatch(clearCart());
-      navigate("/orders");
+      setOrderPlaced(true);
+
     } catch (err) {
       console.error("Payment error:", err);
       setError(err.message || "Payment failed");
@@ -88,8 +92,8 @@ export default function PaymentPage() {
     }
   };
 
-  if (!shipping) {
-    // if user opens /payment directly without going through checkout
+  // ✅ DIRECT ACCESS BLOCK
+  if (!shipping && !orderPlaced) {
     return (
       <div className="max-w-2xl mx-auto p-6">
         <p className="text-sm text-red-600 mb-2">
@@ -105,15 +109,48 @@ export default function PaymentPage() {
     );
   }
 
+  // ✅ ✅ FLIPKART STYLE ORDER SUCCESS SCREEN
+  if (orderPlaced) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6">
+
+        {/* ✅ BIG GREEN TICK */}
+        <div className="w-20 h-20 flex items-center justify-center rounded-full bg-green-500 text-white text-4xl mb-4">
+          ✓
+        </div>
+
+        <h1 className="text-2xl font-semibold mb-2">
+          Order Placed
+        </h1>
+
+        <p className="text-gray-600 text-sm mb-6">
+          Your order has been successfully placed.  
+          It will be delivered soon.
+        </p>
+
+        <button
+          onClick={() => navigate("/orders")}
+          className="bg-indigo-600 text-white px-6 py-2 rounded-md text-sm font-medium"
+        >
+          View My Orders
+        </button>
+
+      </div>
+    );
+  }
+
+  // ✅ ✅ NORMAL PAYMENT PAGE UI
   return (
     <div className="max-w-2xl mx-auto p-6">
       <h1 className="text-xl font-semibold mb-4">Payment</h1>
 
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
 
-      {/* Shipping summary */}
+      {/* ✅ SHIPPING SUMMARY */}
       <div className="bg-white rounded-lg border p-4 mb-4">
-        <h2 className="text-sm font-semibold mb-2">Shipping Address</h2>
+        <h2 className="text-sm font-semibold mb-2">
+          Shipping Address
+        </h2>
         <p className="text-sm font-medium">{shipping.name}</p>
         <p className="text-sm">{shipping.addressLine1}</p>
         <p className="text-sm">
@@ -122,15 +159,16 @@ export default function PaymentPage() {
         <p className="text-sm">Phone: {shipping.phone}</p>
       </div>
 
-      {/* Order amount */}
+      {/* ✅ ORDER AMOUNT */}
       <div className="bg-white rounded-lg border p-4 mb-4">
         <h2 className="text-sm font-semibold mb-2">Order Amount</h2>
         <p className="text-lg font-bold">₹{totalAmount.toFixed(2)}</p>
       </div>
 
-      {/* Payment Method */}
+      {/* ✅ PAYMENT METHOD */}
       <div className="bg-white rounded-lg border p-4 mb-4">
         <h2 className="text-sm font-semibold mb-2">Payment Method</h2>
+
         <label className="flex items-center gap-2 text-sm mb-2">
           <input
             type="radio"
@@ -141,6 +179,7 @@ export default function PaymentPage() {
           />
           Cash on Delivery
         </label>
+
         <label className="flex items-center gap-2 text-sm mb-2">
           <input
             type="radio"
@@ -153,6 +192,7 @@ export default function PaymentPage() {
         </label>
       </div>
 
+      {/* ✅ PLACE ORDER BUTTON */}
       <button
         onClick={handlePay}
         disabled={loading}

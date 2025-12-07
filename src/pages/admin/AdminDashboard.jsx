@@ -1,4 +1,4 @@
-// src/pages/AdminDashboard.jsx
+// src/pages/admin/AdminDashboard.jsx
 import React, { useEffect, useState } from "react";
 import {
   fetchVendors,
@@ -6,416 +6,245 @@ import {
   updateVendor,
   deleteVendor,
   fetchOrderStatuses,
-  createOrderStatus,
   updateOrderStatus,
   deleteOrderStatus,
-} from "../../api/adminapi"; // ⬅️ path updated (../ instead of ../../)
-
-// All allowed status names as per OrderStatus enum
-const ORDER_STATUS_OPTIONS = [
-  "Processing",
-  "Packed",
-  "Shipped",
-  "Delivered",
-  "Cancelled",
-  "Returned",
-  "Refunded",
-];
+  fetchAllOrders,
+  sendOrderToVendor,
+  deleteOrder,
+} from "../../api/adminapi";
 
 export default function AdminDashboard() {
-  // ---------- Vendor state ----------
+  /* ================= VENDOR STATE ================= */
   const [vendors, setVendors] = useState([]);
-  const [vendorLoading, setVendorLoading] = useState(false);
-  const [vendorError, setVendorError] = useState("");
-
   const [vendorForm, setVendorForm] = useState({
-    name: "",
-    email: "",
+    userId: "",
     shopName: "",
+    description: "",
+    address: "",
   });
   const [editingVendorId, setEditingVendorId] = useState(null);
 
-  // ---------- Order status state ----------
+  /* ================= STATUS STATE ================= */
   const [statuses, setStatuses] = useState([]);
-  const [statusLoading, setStatusLoading] = useState(false);
-  const [statusError, setStatusError] = useState("");
-
   const [statusForm, setStatusForm] = useState({
     name: "",
     description: "",
   });
   const [editingStatusId, setEditingStatusId] = useState(null);
 
-  // ---------- Load vendors ----------
+  /* ================= ORDER STATE ================= */
+  const [orders, setOrders] = useState([]);
+
+  /* ================= LOAD FUNCTIONS ================= */
+
   const loadVendors = async () => {
-    setVendorLoading(true);
-    setVendorError("");
-    try {
-      const data = await fetchVendors();
-      // backend may return array OR { vendors: [...] }
-      setVendors(Array.isArray(data) ? data : data.vendors || []);
-    } catch (err) {
-      console.error("Fetch vendors error:", err);
-      setVendorError(err.message || "Failed to fetch vendors");
-    } finally {
-      setVendorLoading(false);
-    }
+    const res = await fetchVendors();
+    setVendors(Array.isArray(res) ? res : res?.vendors || []);
   };
 
-  // ---------- Load order statuses ----------
   const loadStatuses = async () => {
-    setStatusLoading(true);
-    setStatusError("");
-    try {
-      const data = await fetchOrderStatuses();
-      // backend may return array OR { statuses: [...] }
-      setStatuses(Array.isArray(data) ? data : data.statuses || []);
-    } catch (err) {
-      console.error("Fetch order statuses error:", err);
-      setStatusError(err.message || "Failed to fetch order statuses");
-    } finally {
-      setStatusLoading(false);
-    }
+    const res = await fetchOrderStatuses();
+    setStatuses(Array.isArray(res) ? res : res?.data || []);
+  };
+
+  const loadOrders = async () => {
+    const res = await fetchAllOrders();
+    setOrders(Array.isArray(res) ? res : res?.orders || []);
   };
 
   useEffect(() => {
     loadVendors();
     loadStatuses();
+    loadOrders();
   }, []);
 
-  // ---------- Vendor handlers ----------
+  /* ================= VENDOR HANDLERS ================= */
+
   const handleVendorChange = (e) => {
-    setVendorForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    setVendorForm({ ...vendorForm, [e.target.name]: e.target.value });
   };
 
   const handleVendorSubmit = async (e) => {
     e.preventDefault();
-    setVendorError("");
-    try {
-      if (editingVendorId) {
-        await updateVendor(editingVendorId, vendorForm);
-      } else {
-        await createVendor(vendorForm);
-      }
-      setVendorForm({ name: "", email: "", shopName: "" });
-      setEditingVendorId(null);
-      await loadVendors();
-    } catch (err) {
-      console.error("Save vendor error:", err);
-      setVendorError(err.message || "Failed to save vendor");
+    if (editingVendorId) {
+      await updateVendor(editingVendorId, vendorForm);
+    } else {
+      await createVendor(vendorForm);
     }
+    setVendorForm({ userId: "", shopName: "", description: "", address: "" });
+    setEditingVendorId(null);
+    loadVendors();
   };
 
   const handleVendorEdit = (vendor) => {
     setEditingVendorId(vendor._id);
-    setVendorForm({
-      name: vendor.name || "",
-      email: vendor.email || "",
-      shopName: vendor.shopName || "",
-    });
+    setVendorForm(vendor);
   };
 
   const handleVendorDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this vendor?")) return;
-    setVendorError("");
-    try {
+    if (window.confirm("Delete vendor?")) {
       await deleteVendor(id);
-      await loadVendors();
-    } catch (err) {
-      console.error("Delete vendor error:", err);
-      setVendorError(err.message || "Failed to delete vendor");
+      loadVendors();
     }
   };
 
-  const handleVendorCancelEdit = () => {
-    setEditingVendorId(null);
-    setVendorForm({ name: "", email: "", shopName: "" });
-  };
-
-  // ---------- Status handlers ----------
-  const handleStatusChange = (e) => {
-    setStatusForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-  const handleStatusSubmit = async (e) => {
-    e.preventDefault();
-    setStatusError("");
-    try {
-      if (editingStatusId) {
-        await updateOrderStatus(editingStatusId, statusForm);
-      } else {
-        await createOrderStatus(statusForm);
-      }
-      setStatusForm({ name: "", description: "" });
-      setEditingStatusId(null);
-      await loadStatuses();
-    } catch (err) {
-      console.error("Save order status error:", err);
-      setStatusError(err.message || "Failed to save order status");
-    }
-  };
+  /* ================= STATUS HANDLERS (ADMIN CAN'T CREATE) ================= */
 
   const handleStatusEdit = (status) => {
     setEditingStatusId(status._id);
-    setStatusForm({
-      name: status.name || "",
-      description: status.description || "",
-    });
+    setStatusForm(status);
+  };
+
+  const handleStatusUpdate = async (e) => {
+    e.preventDefault();
+    await updateOrderStatus(editingStatusId, statusForm);
+    setEditingStatusId(null);
+    setStatusForm({ name: "", description: "" });
+    loadStatuses();
   };
 
   const handleStatusDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this status?")) return;
-    setStatusError("");
-    try {
+    if (window.confirm("Delete status?")) {
       await deleteOrderStatus(id);
-      await loadStatuses();
-    } catch (err) {
-      console.error("Delete order status error:", err);
-      setStatusError(err.message || "Failed to delete order status");
+      loadStatuses();
     }
   };
 
-  const handleStatusCancelEdit = () => {
-    setEditingStatusId(null);
-    setStatusForm({ name: "", description: "" });
+  /* ================= ORDER HANDLERS ================= */
+
+  const handleAssignVendor = async (orderId, vendorId) => {
+    if (!vendorId) return alert("Select vendor");
+    await sendOrderToVendor(orderId, vendorId);
+    alert("Vendor Assigned");
+    loadOrders();
   };
 
+  const handleOrderDelete = async (id) => {
+    if (window.confirm("Delete order?")) {
+      await deleteOrder(id);
+      loadOrders();
+    }
+  };
+
+  /* ================= UI ================= */
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold mb-1">Admin Dashboard</h1>
-        <p className="text-gray-600 text-sm">
-          Only logged-in admins can access this page and manage vendors & order statuses.
-        </p>
-      </div>
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-10">
+      <h1 className="text-2xl font-bold">Admin Dashboard</h1>
 
-      {/* ---------- VENDOR SECTION ---------- */}
-      <section className="bg-white border rounded-lg p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold">Vendor Management</h2>
-          {vendorLoading && (
-            <span className="text-xs text-gray-500">Loading vendors...</span>
-          )}
-        </div>
+      {/* ================= VENDOR MANAGEMENT ================= */}
+      <section className="bg-white border rounded-lg p-5">
+        <h2 className="text-lg font-semibold mb-4">Vendor Management</h2>
 
-        {vendorError && (
-          <div className="mb-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded px-3 py-2">
-            {vendorError}
-          </div>
-        )}
+        <form onSubmit={handleVendorSubmit} className="grid gap-3 md:grid-cols-2">
+          <input name="userId" placeholder="User ID" value={vendorForm.userId} onChange={handleVendorChange} className="border p-2 rounded" />
+          <input name="shopName" placeholder="Shop Name" value={vendorForm.shopName} onChange={handleVendorChange} className="border p-2 rounded" />
+          <input name="description" placeholder="Description" value={vendorForm.description} onChange={handleVendorChange} className="border p-2 rounded" />
+          <input name="address" placeholder="Address" value={vendorForm.address} onChange={handleVendorChange} className="border p-2 rounded" />
 
-        {/* Vendor Form */}
-        <div className="mb-4">
-          <h3 className="text-sm font-semibold mb-2">
-            {editingVendorId ? "Edit Vendor" : "update Vendor"}
-          </h3>
-          <form
-            onSubmit={handleVendorSubmit}
-            className="grid gap-3 md:grid-cols-3"
-          >
-            <input
-              name="name"
-              placeholder="Vendor Name"
-              value={vendorForm.name}
-              onChange={handleVendorChange}
-              required
-              className="border rounded px-3 py-2 text-sm"
-            />
-            <input
-              name="email"
-              placeholder="Vendor Email"
-              type="email"
-              value={vendorForm.email}
-              onChange={handleVendorChange}
-              required
-              className="border rounded px-3 py-2 text-sm"
-            />
-            <input
-              name="shopName"
-              placeholder="Shop Name"
-              value={vendorForm.shopName}
-              onChange={handleVendorChange}
-              className="border rounded px-3 py-2 text-sm"
-            />
+          <button className="bg-indigo-600 text-white p-2 rounded col-span-2">
+            {editingVendorId ? "Update Vendor" : "Create Vendor"}
+          </button>
+        </form>
 
-            <div className="flex items-center gap-2 md:col-span-3">
-              <button
-                type="submit"
-                className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-md hover:bg-indigo-700"
-              >
-                {editingVendorId ? "Update Vendor" : "edit Vendor"}
-              </button>
-              {editingVendorId && (
-                <button
-                  type="button"
-                  onClick={handleVendorCancelEdit}
-                  className="text-sm px-3 py-2 rounded-md border"
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-          </form>
-        </div>
-
-        {/* Vendor Table */}
-        <div>
-          <h3 className="text-sm font-semibold mb-2">Vendors</h3>
-          {vendors.length === 0 ? (
-            <p className="text-sm text-gray-600">No vendors found.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm border">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="border px-3 py-2 text-left">Name</th>
-                    <th className="border px-3 py-2 text-left">Email</th>
-                    <th className="border px-3 py-2 text-left">Shop</th>
-                    <th className="border px-3 py-2 text-left">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {vendors.map((v) => (
-                    <tr key={v._id}>
-                      <td className="border px-3 py-2">{v.name}</td>
-                      <td className="border px-3 py-2">{v.email}</td>
-                      <td className="border px-3 py-2">
-                        {v.shopName || "-"}
-                      </td>
-                      <td className="border px-3 py-2">
-                        <button
-                          onClick={() => handleVendorEdit(v)}
-                          className="text-xs text-indigo-600 mr-3 hover:underline"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleVendorDelete(v._id)}
-                          className="text-xs text-red-600 hover:underline"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        <table className="w-full border mt-5">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="border p-2">Shop</th>
+              <th className="border p-2">Description</th>
+              <th className="border p-2">Address</th>
+              <th className="border p-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {vendors.map((v) => (
+              <tr key={v._id}>
+                <td className="border p-2">{v.shopName}</td>
+                <td className="border p-2">{v.description}</td>
+                <td className="border p-2">{v.address}</td>
+                <td className="border p-2">
+                  <button onClick={() => handleVendorEdit(v)} className="text-blue-600 mr-3">Edit</button>
+                  <button onClick={() => handleVendorDelete(v._id)} className="text-red-600">Delete</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </section>
 
-      {/* ---------- ORDER STATUS SECTION ---------- */}
-      <section className="bg-white border rounded-lg p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold">Order Status Management</h2>
-          {statusLoading && (
-            <span className="text-xs text-gray-500">Loading statuses...</span>
-          )}
-        </div>
+      {/* ================= ORDER STATUS MASTER ================= */}
+      <section className="bg-white border rounded-lg p-5">
+        <h2 className="text-lg font-semibold mb-4">Order Status Master (Admin Only Edit)</h2>
 
-        {statusError && (
-          <div className="mb-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded px-3 py-2">
-            {statusError}
-          </div>
+        {editingStatusId && (
+          <form onSubmit={handleStatusUpdate} className="flex gap-3 mb-4">
+            <input name="name" value={statusForm.name} onChange={(e) => setStatusForm({ ...statusForm, name: e.target.value })} className="border p-2 rounded" />
+            <button className="bg-indigo-600 text-white px-4 rounded">Update</button>
+          </form>
         )}
 
-        {/* Status Form */}
-        <div className="mb-4">
-          <h3 className="text-sm font-semibold mb-2">
-            {editingStatusId ? "Edit Status" : "Add Status"}
-          </h3>
-          <form
-            onSubmit={handleStatusSubmit}
-            className="grid gap-3 md:grid-cols-3"
-          >
-            {/* Use dropdown to match enum exactly */}
-            <select
-              name="name"
-              value={statusForm.name}
-              onChange={handleStatusChange}
-              required
-              className="border rounded px-3 py-2 text-sm"
-            >
-              <option value="">Select Status</option>
-              {ORDER_STATUS_OPTIONS.map((st) => (
-                <option key={st} value={st}>
-                  {st}
-                </option>
-              ))}
-            </select>
+        <table className="w-full border">
+          <tbody>
+            {statuses.map((s) => (
+              <tr key={s._id}>
+                <td className="border p-2">{s.name}</td>
+                <td className="border p-2">
+                  <button onClick={() => handleStatusEdit(s)} className="text-blue-600 mr-3">Edit</button>
+                  <button onClick={() => handleStatusDelete(s._id)} className="text-red-600">Delete</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
 
-            <input
-              name="description"
-              placeholder="Description (optional)"
-              value={statusForm.description}
-              onChange={handleStatusChange}
-              className="border rounded px-3 py-2 text-sm md:col-span-2"
-            />
+      {/* ================= ORDER MANAGEMENT ================= */}
+      <section className="bg-white border rounded-lg p-5">
+        <h2 className="text-lg font-semibold mb-4">Order Management</h2>
 
-            <div className="flex items-center gap-2 md:col-span-3">
-              <button
-                type="submit"
-                className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-md hover:bg-indigo-700"
-              >
-                {editingStatusId ? "Update Status" : "Create Status"}
-              </button>
-              {editingStatusId && (
-                <button
-                  type="button"
-                  onClick={handleStatusCancelEdit}
-                  className="text-sm px-3 py-2 rounded-md border"
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-          </form>
-        </div>
+        <table className="w-full border text-sm">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="border p-2">Order ID</th>
+              <th className="border p-2">Customer</th>
+              <th className="border p-2">Total</th>
+              <th className="border p-2">Status</th>
+              <th className="border p-2">Assign Vendor</th>
+              <th className="border p-2">Actions</th>
+            </tr>
+          </thead>
 
-        {/* Status Table */}
-        <div>
-          <h3 className="text-sm font-semibold mb-2">Order Statuses</h3>
-          {statuses.length === 0 ? (
-            <p className="text-sm text-gray-600">No statuses found.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm border">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="border px-3 py-2 text-left">Name</th>
-                    <th className="border px-3 py-2 text-left">Description</th>
-                    <th className="border px-3 py-2 text-left">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {statuses.map((s) => (
-                    <tr key={s._id}>
-                      <td className="border px-3 py-2">{s.name}</td>
-                      <td className="border px-3 py-2">
-                        {s.description || "-"}
-                      </td>
-                      <td className="border px-3 py-2">
-                        <button
-                          onClick={() => handleStatusEdit(s)}
-                          className="text-xs text-indigo-600 mr-3 hover:underline"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleStatusDelete(s._id)}
-                          className="text-xs text-red-600 hover:underline"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+          <tbody>
+            {orders.map((order) => (
+              <tr key={order._id}>
+                <td className="border p-2">{order._id}</td>
+                <td className="border p-2">{order.customer?.name || "Guest"}</td>
+                <td className="border p-2">₹{order.totalAmount}</td>
+                <td className="border p-2">{order.status?.name || "Pending"}</td>
+
+                <td className="border p-2">
+                  <select
+                    onChange={(e) => handleAssignVendor(order._id, e.target.value)}
+                    className="border p-1 rounded"
+                  >
+                    <option value="">Select Vendor</option>
+                    {vendors.map((v) => (
+                      <option key={v._id} value={v._id}>
+                        {v.shopName}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+
+                <td className="border p-2">
+                  <button onClick={() => handleOrderDelete(order._id)} className="text-red-600">
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </section>
     </div>
   );

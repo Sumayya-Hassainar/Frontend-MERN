@@ -1,8 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Carousel from '../../components/Carousel';
+import { FaStar } from 'react-icons/fa';
 
-// dummy products just for UI
+// dummy products
 const sampleProducts = [
   {
     id: 1,
@@ -38,12 +39,33 @@ const sampleProducts = [
   },
 ];
 
+// dummy last reviews
+const lastReviews = [
+  {
+    product: 'Wireless Headphones Pro',
+    customer: 'Rahul Sharma',
+    rating: 5,
+    comment: 'Amazing sound quality and very comfortable!',
+  },
+  {
+    product: 'Smartphone 5G 128GB',
+    customer: 'Priya Singh',
+    rating: 4,
+    comment: 'Fast and sleek, battery life is great.',
+  },
+  {
+    product: 'Casual Men’s Sneakers',
+    customer: 'Amit Verma',
+    rating: 4,
+    comment: 'Very comfy, fits perfectly!',
+  },
+];
+
 export default function Home() {
   const navigate = useNavigate();
 
   const handleAddToCart = () => {
-    // Redirect to Register page if user is not logged in
-    navigate('/register');
+    navigate('/register'); // dummy redirect for not logged-in users
   };
 
   return (
@@ -96,7 +118,10 @@ export default function Home() {
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xl font-semibold">Featured products</h2>
-          <button className="text-sm text-indigo-600 hover:underline">
+          <button
+            onClick={() => navigate('/products')}
+            className="text-sm text-indigo-600 hover:underline"
+          >
             View all
           </button>
         </div>
@@ -111,7 +136,12 @@ export default function Home() {
                 alt={p.name}
                 className="w-full h-40 object-cover rounded mb-2"
               />
-              <h3 className="text-sm font-semibold mb-1">{p.name}</h3>
+              <h3
+                onClick={() => navigate(`/products/${p.id}`)}
+                className="text-sm font-semibold mb-1 cursor-pointer hover:underline"
+              >
+                {p.name}
+              </h3>
               <p className="text-xs text-gray-500 mb-1">by {p.vendor}</p>
               <span className="text-sm font-bold">₹{p.price}</span>
               <button
@@ -120,6 +150,32 @@ export default function Home() {
               >
                 Add to Cart
               </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Last Customer Reviews section */}
+      <section className="mt-8">
+        <h2 className="text-xl font-semibold mb-4">Last Customer Reviews</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {lastReviews.map((r, idx) => (
+            <div
+              key={idx}
+              className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 flex flex-col"
+            >
+              <h3 className="text-sm font-semibold mb-1">{r.product}</h3>
+              <div className="flex items-center mb-1">
+                {[...Array(5)].map((_, i) => (
+                  <FaStar
+                    key={i}
+                    size={16}
+                    color={i < r.rating ? '#facc15' : '#d1d5db'}
+                  />
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mb-1">{r.customer}</p>
+              <p className="text-sm text-gray-700">{r.comment}</p>
             </div>
           ))}
         </div>

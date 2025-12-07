@@ -1,11 +1,11 @@
-// src/pages/user/OrderDetailPage.jsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { fetchOrderById } from "../../api/api.jsx";
 import OrderTrackingSteps from "../../components/OrderTrackingSteps.jsx";
+import ReviewForm from "../../components/ReviewForm.jsx";
 
 export default function OrderDetailPage() {
-  const { orderId } = useParams();
+  const { id } = useParams(); // ✅ FIXED ID
   const navigate = useNavigate();
 
   const [order, setOrder] = useState(null);
@@ -15,13 +15,13 @@ export default function OrderDetailPage() {
   useEffect(() => {
     const loadOrder = async () => {
       try {
-        if (!orderId) {
+        if (!id) {
           setError("No Order ID in URL");
-          setLoading(false);
           return;
         }
+
         setLoading(true);
-        const data = await fetchOrderById(orderId);
+        const data = await fetchOrderById(id);
         setOrder(data);
       } catch (err) {
         console.error("Fetch order error:", err);
@@ -32,7 +32,7 @@ export default function OrderDetailPage() {
     };
 
     loadOrder();
-  }, [orderId]);
+  }, [id]);
 
   if (loading) return <p className="p-4">Loading order details...</p>;
   if (error) return <p className="p-4 text-red-600">{error}</p>;
@@ -48,74 +48,112 @@ export default function OrderDetailPage() {
       </button>
 
       <h1 className="text-xl font-semibold mb-4">
-        Order #{order._id.slice(-6)}
+        Order #{order._id?.slice(-6)}
       </h1>
 
-      {/* Tracking section */}
+      {/* ✅ TRACKING */}
       <div className="bg-white border rounded-lg p-4 mb-4">
         <h2 className="font-semibold text-lg mb-1">Tracking</h2>
         <p className="text-sm text-gray-600 mb-2">
-          Current Status: <span className="font-medium">{order.orderStatus}</span>
+          Current Status:{" "}
+          <span className="font-medium">{order.orderStatus}</span>
         </p>
 
-        {/* show steps based on order.orderStatus */}
         <OrderTrackingSteps currentStatus={order.orderStatus} />
+      </div>
 
-        {/* Optional tracking text from backend */}
-        {order.trackingStatus && (
-          <p className="text-xs text-gray-500 mt-3">
-            {order.trackingStatus}
+      {/* ✅ ORDER INFO */}
+      <div className="bg-white border rounded-lg p-4 mb-4">
+        <h2 className="font-semibold text-lg mb-2">Order Info</h2>
+
+        <p>
+          <strong>Payment Method:</strong> {order.paymentMethod || "N/A"}
+        </p>
+
+        <p>
+          <strong>Total Amount:</strong> ₹{order.totalAmount || 0}
+        </p>
+
+        <p>
+          <strong>Placed On:</strong>{" "}
+          {order.createdAt
+            ? new Date(order.createdAt).toLocaleString()
+            : "N/A"}
+        </p>
+      </div>
+
+      {/* ✅ SHIPPING ADDRESS — FULLY FIXED */}
+      <div className="bg-white border rounded-lg p-4 mb-4">
+        <h2 className="font-semibold text-lg mb-2">Shipping Address</h2>
+
+        {order.shippingAddress ? (
+          typeof order.shippingAddress === "string" ? (
+            <p>{order.shippingAddress}</p>
+          ) : (
+            <div className="text-sm space-y-1">
+              <p>{order.shippingAddress?.street || "—"}</p>
+              <p>
+                {order.shippingAddress?.city || "—"},{" "}
+                {order.shippingAddress?.state || "—"}
+              </p>
+              <p>{order.shippingAddress?.pincode || "—"}</p>
+            </div>
+          )
+        ) : (
+          <p className="text-sm text-gray-500">
+            No shipping address available
           </p>
         )}
       </div>
 
-      {/* Order Info */}
-      <div className="bg-white border rounded-lg p-4 mb-4">
-        <h2 className="font-semibold text-lg mb-2">Order Info</h2>
-        <p>
-          <strong>Payment Method:</strong> {order.paymentMethod}
-        </p>
-        <p>
-          <strong>Total Amount:</strong> ₹{order.totalAmount}
-        </p>
-        <p>
-          <strong>Placed On:</strong>{" "}
-          {new Date(order.createdAt).toLocaleString()}
-        </p>
-      </div>
-
-      {/* Shipping Address */}
-      <div className="bg-white border rounded-lg p-4 mb-4">
-        <h2 className="font-semibold text-lg mb-2">Shipping Address</h2>
-        <p>{order.shippingAddress?.fullName}</p>
-        <p>{order.shippingAddress?.phone}</p>
-        <p>
-          {order.shippingAddress?.street}, {order.shippingAddress?.city},{" "}
-          {order.shippingAddress?.state}
-        </p>
-        <p>
-          {order.shippingAddress?.country} - {order.shippingAddress?.pincode}
-        </p>
-      </div>
-
-      {/* Products */}
+      {/* ✅ PRODUCTS — PRICE & TOTAL FIXED (NO ₹NaN EVER) */}
       <div className="bg-white border rounded-lg p-4 mb-4">
         <h2 className="font-semibold text-lg mb-2">Products</h2>
-        {order.products?.map((item) => (
-          <div
-            key={item._id}
-            className="flex justify-between mb-2 border-b pb-2 text-sm"
-          >
-            <div>
-              <p>{item.product?.name || "Product"}</p>
-              <p className="text-xs text-gray-500">
-                Qty: {item.quantity} × ₹{item.price}
+
+        {order.products?.map((item) => {
+          const price =
+            item.product?.discountPrice ||
+            item.product?.price ||
+            0;
+
+          return (
+            <div
+              key={item._id}
+              className="flex justify-between mb-2 border-b pb-2 text-sm"
+            >
+              <div>
+                <p>{item.product?.name || "Product"}</p>
+                <p className="text-xs text-gray-500">
+                  Qty: {item.quantity} × ₹{price}
+                </p>
+              </div>
+              <p className="font-medium">
+                ₹{item.quantity * price}
               </p>
             </div>
-            <p className="font-medium">₹{item.quantity * item.price}</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
+
+      {/* ✅ REVIEW ONLY WHEN DELIVERED */}
+      {order.orderStatus === "Delivered" && (
+        <div className="bg-white border rounded-lg p-4 mt-5">
+          <h2 className="text-lg font-semibold mb-3">
+            Rate & Review Your Products
+          </h2>
+
+          {order.products?.map((item) => (
+            <div key={item._id} className="mb-6">
+              <h3 className="font-medium mb-2">
+                {item.product?.name || "Product"}
+              </h3>
+              <ReviewForm
+                productId={item.product?._id || item.product}
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

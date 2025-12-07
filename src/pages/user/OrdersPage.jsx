@@ -14,8 +14,17 @@ export default function OrdersPage() {
       try {
         setLoading(true);
         setError("");
+
         const data = await fetchMyOrders();
-        setOrders(data);
+
+        // ✅ SAFE CHECK FOR ARRAY
+        if (Array.isArray(data)) {
+          setOrders(data);
+        } else if (Array.isArray(data.orders)) {
+          setOrders(data.orders);
+        } else {
+          setOrders([]);
+        }
       } catch (err) {
         console.error("Fetch orders error:", err);
         setError(err.message || "Failed to fetch orders");
@@ -42,12 +51,13 @@ export default function OrdersPage() {
   return (
     <div className="max-w-4xl mx-auto p-4">
       <h1 className="text-xl font-semibold mb-4">My Orders</h1>
+
       <div className="space-y-3">
         {orders.map((order) => (
           <div
             key={order._id}
             className="bg-white border rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => navigate(`/orders/${order._id}`)} // ✅ navigate with :id
+            onClick={() => navigate(`/orders/${order._id}`)} // ✅ ROUTE SAFE
           >
             <div className="flex justify-between items-center mb-2">
               <div>
@@ -58,6 +68,7 @@ export default function OrdersPage() {
                   {new Date(order.createdAt).toLocaleString()}
                 </p>
               </div>
+
               <span
                 className={`text-xs px-2 py-1 rounded-full ${
                   order.orderStatus === "Pending"
@@ -72,10 +83,15 @@ export default function OrdersPage() {
                 {order.orderStatus}
               </span>
             </div>
+
             <p className="text-sm">
-              Items: {order.products?.reduce((sum, p) => sum + p.quantity, 0)}
+              Items:{" "}
+              {order.products?.reduce((sum, p) => sum + p.quantity, 0) || 0}
             </p>
-            <p className="text-sm font-semibold">Total: ₹{order.totalAmount}</p>
+
+            <p className="text-sm font-semibold">
+              Total: ₹{order.totalAmount}
+            </p>
           </div>
         ))}
       </div>

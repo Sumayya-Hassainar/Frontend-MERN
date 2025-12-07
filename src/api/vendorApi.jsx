@@ -1,47 +1,51 @@
 // src/api/vendorApi.jsx
-const API_BASE = import.meta.env.VITE_API_URL || "https://backend-mern-ex49.onrender.com/api";
 
-/* ===================== AUTH HELPERS ===================== */
+const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  "https://backend-mern-ex49.onrender.com/api";
 
-function getToken() {
-  return localStorage.getItem("token");
-}
+/* ================= AUTH HEADER ================= */
 
-function authHeaders(extra = {}) {
-  const token = getToken();
+function getAuthHeaders() {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    console.warn("⚠️ No token found in localStorage");
+    return { "Content-Type": "application/json" };
+  }
+
   return {
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...extra,
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
   };
 }
 
-/* ===================== VENDOR AUTH ===================== */
+/* ================= GLOBAL ERROR HANDLER ================= */
 
-// --- Vendor Register ---
-// NOTE: if vendor registration is different (e.g. /vendors/register) change this URL
-export async function registerVendor(payload) {
-  const res = await fetch(`${API_BASE}/users/register`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders(),
-    },
-    body: JSON.stringify(payload),
-  });
-
+async function handleResponse(res, defaultMsg) {
   if (!res.ok) {
-    let message = "Vendor registration failed";
+    let message = defaultMsg;
     try {
       const data = await res.json();
       if (data?.message) message = data.message;
     } catch {}
     throw new Error(message);
   }
-
-  return res.json(); // e.g. { user, token? }
+  return res.json();
 }
 
-// --- Vendor Login ---
+/* ===================== VENDOR AUTH ===================== */
+
+export async function registerVendor(payload) {
+  const res = await fetch(`${API_BASE}/users/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  return handleResponse(res, "Vendor registration failed");
+}
+
 export async function loginVendor(payload) {
   const res = await fetch(`${API_BASE}/users/login`, {
     method: "POST",
@@ -49,125 +53,104 @@ export async function loginVendor(payload) {
     body: JSON.stringify(payload),
   });
 
-  if (!res.ok) {
-    let message = "Vendor login failed";
-    try {
-      const data = await res.json();
-      if (data?.message) message = data.message;
-    } catch {}
-    throw new Error(message);
-  }
-
-  return res.json(); // { token, user }
+  return handleResponse(res, "Vendor login failed");
 }
 
 /* ===================== CATEGORIES ===================== */
 
 export async function fetchCategories() {
-  const res = await fetch(`${API_BASE}/categories`, {
-    method: "GET",
-  });
-
-  if (!res.ok) {
-    let msg = "Failed to fetch categories";
-    try {
-      const data = await res.json();
-      if (data?.message) msg = data.message;
-    } catch {}
-    throw new Error(msg);
-  }
-
-  return res.json(); // expect array: [{ _id, name }, ...]
+  const res = await fetch(`${API_BASE}/categories`);
+  return handleResponse(res, "Failed to fetch categories");
 }
 
 /* ===================== VENDOR PRODUCTS ===================== */
 
-// Get only this vendor's products
-// Backend route we are assuming: GET /api/products/vendor/my-products?category=...
 export async function getVendorProducts(categoryId) {
   const params = categoryId ? `?category=${categoryId}` : "";
+
   const res = await fetch(
     `${API_BASE}/products/vendor/my-products${params}`,
     {
       method: "GET",
-      headers: authHeaders({
-        "Content-Type": "application/json",
-      }),
+      headers: getAuthHeaders(),
     }
   );
 
-  if (!res.ok) {
-    let msg = "Failed to fetch vendor products";
-    try {
-      const data = await res.json();
-      if (data?.message) msg = data.message;
-    } catch {}
-    throw new Error(msg);
-  }
-
-  return res.json(); // should be array OR { products: [...] }
+  return handleResponse(res, "Failed to fetch vendor products");
 }
-
-/* ----- CREATE product (multipart/form-data) ----- */
 
 export async function createVendorProduct(formData) {
+  const token = localStorage.getItem("token");
+
   const res = await fetch(`${API_BASE}/products`, {
     method: "POST",
-    headers: authHeaders(), // ⚠️ don't set Content-Type for FormData
+    headers: {
+      Authorization: `Bearer ${token}`, // ✅ NO JSON HEADER FOR FORM-DATA
+    },
     body: formData,
   });
 
-  if (!res.ok) {
-    let msg = "Failed to create product";
-    try {
-      const data = await res.json();
-      if (data?.message) msg = data.message;
-    } catch {}
-    throw new Error(msg);
-  }
-
-  return res.json(); // created product
+  return handleResponse(res, "Failed to create product");
 }
-
-/* ----- UPDATE product (multipart/form-data) ----- */
 
 export async function updateVendorProduct(id, formData) {
+  const token = localStorage.getItem("token");
+
   const res = await fetch(`${API_BASE}/products/${id}`, {
     method: "PUT",
-    headers: authHeaders(), // again, no manual Content-Type
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
     body: formData,
   });
 
-  if (!res.ok) {
-    let msg = "Failed to update product";
-    try {
-      const data = await res.json();
-      if (data?.message) msg = data.message;
-    } catch {}
-    throw new Error(msg);
-  }
-
-  return res.json(); // updated product
+  return handleResponse(res, "Failed to update product");
 }
-
-/* ----- DELETE product ----- */
 
 export async function deleteVendorProduct(id) {
   const res = await fetch(`${API_BASE}/products/${id}`, {
     method: "DELETE",
-    headers: authHeaders({
-      "Content-Type": "application/json",
-    }),
+    headers: getAuthHeaders(),
   });
 
-  if (!res.ok) {
-    let msg = "Failed to delete product";
-    try {
-      const data = await res.json();
-      if (data?.message) msg = data.message;
-    } catch {}
-    throw new Error(msg);
-  }
+  return handleResponse(res, "Failed to delete product");
+}
 
-  return res.json(); // { message: "Product deleted" }
+/* ================= ✅ VENDOR ORDER MASTER STATUS ================= */
+
+// ✅ VENDOR CREATES ORDER STATUS (MASTER)
+export async function createVendorOrderStatus(payload) {
+  const res = await fetch(`${API_BASE}/order-statuses/vendor`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+
+  return handleResponse(res, "Failed to create order status");
+}
+
+/* ================= ✅ VENDOR ORDERS ================= */
+
+// ✅ GET VENDOR ASSIGNED ORDERS
+export async function fetchVendorOrders() {
+  const res = await fetch(`${API_BASE}/orders/vendor`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse(res, "Failed to fetch vendor orders");
+}
+
+// ✅ VENDOR UPDATES REAL ORDER STATUS
+export async function updateVendorOrderStatus(orderId, status) {
+  const res = await fetch(
+    `${API_BASE}/order-statuses/vendor/${orderId}/status`,
+    {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ status }),
+    }
+  );
+
+  return handleResponse(res, "Failed to update order status");
 }

@@ -1,28 +1,32 @@
 // src/pages/SearchResults.jsx
 import React, { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
 import { fetchProducts } from "../../api/api";
 import ProductCard from "../../components/ProductCard";
 
-function useQuery() {
-  return new URLSearchParams(useLocation().search);
-}
 
 export default function SearchResults() {
-  const query = useQuery();
-  const q = (query.get("q") || "").toLowerCase();
-
   const [allProducts, setAllProducts] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [role, setRole] = useState("guest");
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    const savedRole = localStorage.getItem("role");
+    if (savedRole) setRole(savedRole);
+  }, []);
 
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
         const data = await fetchProducts();
-        setAllProducts(data);
+        const products = Array.isArray(data) ? data : data.products || [];
+        setAllProducts(products);
       } catch (err) {
         console.error("Search load error:", err);
         setError(err.message || "Failed to load products");
@@ -34,49 +38,58 @@ export default function SearchResults() {
   }, []);
 
   useEffect(() => {
-    if (!q) {
+    if (!query.trim()) {
       setFiltered(allProducts);
     } else {
       const match = allProducts.filter((p) =>
-        p.name?.toLowerCase().includes(q)
+        p.name?.toLowerCase().includes(query.trim().toLowerCase())
       );
       setFiltered(match);
     }
-  }, [q, allProducts]);
+  }, [query, allProducts]);
 
-  if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <p className="text-sm text-gray-600">Searching products…</p>
-      </div>
+  const handleMarkAsRead = (id) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n._id === id ? { ...n, read: true } : n))
     );
-  }
-
-  if (error) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <p className="text-sm text-red-600">{error}</p>
-      </div>
-    );
-  }
+    setUnreadCount((prev) => Math.max(prev - 1, 0));
+  };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6">
-      <h1 className="text-xl font-semibold mb-3">
-        Search results for "{q || "All"}"
-      </h1>
+    <div className="min-h-screen bg-white dark:bg-gray-900 text-black dark:text-white">
+      {/* ✅ HEADER WITH SEARCH ENABLED */}
+      <Header
+        role={role}
+        setRole={setRole}
+        notifications={notifications}
+        unreadCount={unreadCount}
+        onMarkAsRead={handleMarkAsRead}
+        query={query}
+        setQuery={setQuery}
+        showSearch={true}   // ✅ IMPORTANT
+      />
 
-      {filtered.length === 0 ? (
-        <p className="text-gray-600 text-sm">
-          No products found for this search.
-        </p>
-      ) : (
-        <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-          {filtered.map((p) => (
-            <ProductCard key={p._id} product={p} />
-          ))}
-        </div>
-      )}
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <h1 className="text-xl font-semibold mb-3">
+          Search results {query && `for "${query}"`}
+        </h1>
+
+        {loading ? (
+          <p className="text-sm text-gray-600">Loading products…</p>
+        ) : error ? (
+          <p className="text-sm text-red-600">{error}</p>
+        ) : filtered.length === 0 ? (
+          <p className="text-gray-600 text-sm">
+            No products found for this search.
+          </p>
+        ) : (
+          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+            {filtered.map((p) => (
+              <ProductCard key={p._id} product={p} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

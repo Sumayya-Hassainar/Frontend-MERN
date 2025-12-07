@@ -6,18 +6,20 @@ import {
   createVendorProduct,
   updateVendorProduct,
   deleteVendorProduct,
+  fetchVendorOrders,
+  updateVendorOrderStatus,
+  createVendorOrderStatus,
 } from "../../api/vendorApi";
 
 export default function VendorDashboard() {
+  /* ================= STATES ================= */
   const [categories, setCategories] = useState([]);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("");
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-
+  const [loadingProducts, setLoadingProducts] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-  const [saving, setSaving] = useState(false);
-
+  const [savingProduct, setSavingProduct] = useState(false);
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -29,6 +31,57 @@ export default function VendorDashboard() {
     images: [],
   });
 
+  const [vendorOrders, setVendorOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
+  const [orderStatusOptions, setOrderStatusOptions] = useState([
+    "Processing",
+    "Packed",
+    "Shipped",
+    "Delivered",
+    "Cancelled",
+    "Returned",
+    "Refunded",
+  ]);
+  const [newStatus, setNewStatus] = useState("");
+  const [creatingStatus, setCreatingStatus] = useState(false);
+
+  /* ================= LOAD DATA ================= */
+  const loadProducts = async (categoryId) => {
+    setLoadingProducts(true);
+    try {
+      const [cats, prods] = await Promise.all([
+        fetchCategories(),
+        getVendorProducts(categoryId),
+      ]);
+      setCategories(cats?.categories || cats || []);
+      setProducts(prods?.products || prods || []);
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Failed to load products");
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  const loadOrders = async () => {
+    setLoadingOrders(true);
+    try {
+      const orders = await fetchVendorOrders();
+      setVendorOrders(orders?.orders || orders || []);
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Failed to load orders");
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProducts(selectedCategoryFilter);
+    loadOrders();
+  }, [selectedCategoryFilter]);
+
+  /* ================= HANDLERS ================= */
   const resetForm = () => {
     setEditingProduct(null);
     setForm({
@@ -41,59 +94,6 @@ export default function VendorDashboard() {
       isActive: true,
       images: [],
     });
-  };
-
-  const loadData = async (categoryFilter) => {
-    try {
-      setLoading(true);
-      const [cats, prods] = await Promise.all([
-        fetchCategories(),
-        getVendorProducts(categoryFilter),
-      ]);
-
-      setCategories(Array.isArray(cats) ? cats : cats.categories || []);
-      setProducts(Array.isArray(prods) ? prods : prods.products || []);
-    } catch (err) {
-      console.error(err);
-      alert(err.message || "Failed to load vendor dashboard");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData(selectedCategoryFilter);
-  }, [selectedCategoryFilter]);
-
-  const handleOpenCreate = () => {
-    resetForm();
-    setFormOpen(true);
-  };
-
-  const handleEdit = (product) => {
-    setEditingProduct(product);
-    setForm({
-      name: product.name || "",
-      description: product.description || "",
-      category: product.category?._id || product.category || "",
-      price: product.price || "",
-      discountPrice: product.discountPrice || "",
-      stock: product.stock || "",
-      isActive: product.isActive ?? true,
-      images: [],
-    });
-    setFormOpen(true);
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this product?")) return;
-    try {
-      await deleteVendorProduct(id);
-      await loadData(selectedCategoryFilter);
-    } catch (err) {
-      console.error(err);
-      alert(err.message || "Failed to delete product");
-    }
   };
 
   const handleFormChange = (e) => {
@@ -109,326 +109,352 @@ export default function VendorDashboard() {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    setSaving(true);
-
+    setSavingProduct(true);
     try {
       const fd = new FormData();
-      fd.append("name", form.name);
-      fd.append("description", form.description);
-      fd.append("category", form.category);
-      fd.append("price", form.price);
-      fd.append("discountPrice", form.discountPrice);
-      fd.append("stock", form.stock);
-      fd.append("isActive", form.isActive);
+      Object.keys(form).forEach((key) => {
+        if (key === "images") {
+          Array.from(form.images).forEach((img) => fd.append("images", img));
+        } else {
+          fd.append(key, form[key]);
+        }
+      });
 
-      if (form.images && form.images.length > 0) {
-        Array.from(form.images).forEach((file) => {
-          fd.append("images", file);
-        });
-      }
-
-      if (editingProduct) {
-        await updateVendorProduct(editingProduct._id, fd);
-      } else {
-        await createVendorProduct(fd);
-      }
+      if (editingProduct) await updateVendorProduct(editingProduct._id, fd);
+      else await createVendorProduct(fd);
 
       setFormOpen(false);
       resetForm();
-      await loadData(selectedCategoryFilter);
+      loadProducts(selectedCategoryFilter);
     } catch (err) {
       console.error(err);
       alert(err.message || "Failed to save product");
     } finally {
-      setSaving(false);
+      setSavingProduct(false);
     }
   };
 
-  return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
-      <h1 className="text-2xl font-semibold mb-2">Vendor Dashboard</h1>
-      <p className="text-gray-600 text-sm mb-4">
-        Manage your products and see only your own listings.
-      </p>
+  const handleEditProduct = (p) => {
+    setEditingProduct(p);
+    setForm({
+      name: p.name,
+      description: p.description,
+      category: p.category?._id || "",
+      price: p.price,
+      discountPrice: p.discountPrice || "",
+      stock: p.stock,
+      isActive: p.isActive ?? true,
+      images: [],
+    });
+    setFormOpen(true);
+  };
 
-      {/* Top actions */}
-      <div className="flex items-center justify-between mb-4 gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">Filter by category:</span>
+  const handleDeleteProduct = async (id) => {
+    if (!window.confirm("Delete this product?")) return;
+    try {
+      await deleteVendorProduct(id);
+      loadProducts(selectedCategoryFilter);
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Failed to delete product");
+    }
+  };
+
+  const handleOrderStatusChange = async (orderId, status) => {
+    try {
+      await updateVendorOrderStatus(orderId, { status });
+      loadOrders();
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Failed to update order status");
+    }
+  };
+
+  const handleCreateStatus = async () => {
+    if (!newStatus.trim()) return;
+    setCreatingStatus(true);
+    try {
+      await createVendorOrderStatus({ status: newStatus });
+      setOrderStatusOptions((prev) => [...prev, newStatus]);
+      setNewStatus("");
+      alert("New order status added!");
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Failed to create order status");
+    } finally {
+      setCreatingStatus(false);
+    }
+  };
+
+  /* ================= UI ================= */
+  return (
+    <div className="max-w-7xl mx-auto p-6 space-y-12">
+      <h1 className="text-3xl font-bold text-gray-800">Vendor Dashboard</h1>
+
+      {/* ================= PRODUCTS ================= */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-2">
           <select
-            className="border px-2 py-1 text-sm rounded-md"
             value={selectedCategoryFilter}
             onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+            className="border rounded px-3 py-2 w-full sm:w-1/3"
           >
-            <option value="">All</option>
-            {categories.map((cat) => (
-              <option key={cat._id} value={cat._id}>
-                {cat.name}
+            <option value="">All Categories</option>
+            {categories.map((c) => (
+              <option key={c._id} value={c._id}>
+                {c.name}
               </option>
             ))}
           </select>
+
+          <button
+            onClick={() => {
+              resetForm();
+              setFormOpen(true);
+            }}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded shadow"
+          >
+            + Add Product
+          </button>
         </div>
 
-        <button
-          onClick={handleOpenCreate}
-          className="bg-indigo-600 text-white text-sm px-4 py-2 rounded-md hover:bg-indigo-700"
-        >
-          + Add Product
-        </button>
+        {loadingProducts ? (
+          <p className="text-gray-500">Loading products...</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm border border-gray-200 rounded-lg">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="p-2">Image</th>
+                  <th className="p-2">Name</th>
+                  <th className="p-2">Category</th>
+                  <th className="p-2">Price</th>
+                  <th className="p-2">Stock</th>
+                  <th className="p-2">Active</th>
+                  <th className="p-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.map((p) => (
+                  <tr key={p._id} className="border-t hover:bg-gray-50">
+                    <td className="p-2">
+                      {p.images && p.images[0] ? (
+                        <img
+                          src={p.images[0]}
+                          alt={p.name}
+                          className="w-12 h-12 object-cover mx-auto rounded-lg border"
+                        />
+                      ) : (
+                        <span className="text-xs text-gray-400">No image</span>
+                      )}
+                    </td>
+                    <td className="p-2">{p.name}</td>
+                    <td className="p-2">{p.category?.name}</td>
+                    <td className="p-2">₹{p.discountPrice || p.price}</td>
+                    <td className="p-2">{p.stock}</td>
+                    <td className="p-2">{p.isActive ? "Yes" : "No"}</td>
+                    <td className="p-2 space-x-2">
+                      <button
+                        onClick={() => handleEditProduct(p)}
+                        className="border px-2 py-1 rounded hover:bg-gray-100"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteProduct(p._id)}
+                        className="border px-2 py-1 rounded text-red-600 hover:bg-red-50"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {/* Products Table */}
-      {loading ? (
-        <p className="text-sm text-gray-500">Loading...</p>
-      ) : products.length === 0 ? (
-        <p className="text-sm text-gray-500">
-          No products found. Click &quot;Add Product&quot; to create your first one.
-        </p>
-      ) : (
-        <div className="overflow-x-auto border rounded-lg bg-white">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-3 py-2 text-left">Image</th>
-                <th className="px-3 py-2 text-left">Name</th>
-                <th className="px-3 py-2 text-left">Category</th>
-                <th className="px-3 py-2 text-right">Price</th>
-                <th className="px-3 py-2 text-right">Stock</th>
-                <th className="px-3 py-2 text-center">Active</th>
-                <th className="px-3 py-2 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((p) => (
-                <tr key={p._id} className="border-t">
-                  <td className="px-3 py-2">
-                    {p.images && p.images[0] ? (
-                      <img
-                        src={p.images[0]}
-                        alt={p.name}
-                        className="w-12 h-12 object-cover rounded"
-                      />
-                    ) : (
-                      <span className="text-xs text-gray-400">No image</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="font-medium">{p.name}</div>
-                    <div className="text-xs text-gray-500 line-clamp-1">
-                      {p.description}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2">
-                    {p.category?.name || "—"}
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    ₹{p.discountPrice || p.price}
-                    {p.discountPrice && (
-                      <span className="ml-1 text-[10px] text-gray-400 line-through">
-                        ₹{p.price}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-right">{p.stock}</td>
-                  <td className="px-3 py-2 text-center">
-                    {p.isActive ? (
-                      <span className="text-xs text-green-600">Yes</span>
-                    ) : (
-                      <span className="text-xs text-red-500">No</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-right space-x-2">
-                    <button
-                      onClick={() => handleEdit(p)}
-                      className="text-xs px-2 py-1 border rounded hover:bg-gray-50"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(p._id)}
-                      className="text-xs px-2 py-1 border border-red-200 text-red-600 rounded hover:bg-red-50"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Product Form Modal */}
+      {/* ================= PRODUCT MODAL ================= */}
       {formOpen && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-40">
-          <div className="bg-white rounded-lg shadow-lg p-5 w-full max-w-lg">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold">
-                {editingProduct ? "Edit Product" : "Add Product"}
-              </h2>
-              <button
-                onClick={() => {
-                  setFormOpen(false);
-                  resetForm();
-                }}
-                className="text-gray-500 text-sm"
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white w-full max-w-lg rounded-lg shadow-lg p-6 relative">
+            <button
+              className="absolute top-3 right-3 text-gray-500 hover:text-gray-800"
+              onClick={() => setFormOpen(false)}
+            >
+              ✕
+            </button>
+            <h2 className="text-xl font-semibold mb-4">
+              {editingProduct ? "Edit Product" : "Add Product"}
+            </h2>
+            <form onSubmit={handleFormSubmit} className="space-y-3">
+              <input
+                name="name"
+                placeholder="Name"
+                onChange={handleFormChange}
+                value={form.name}
+                className="border rounded w-full p-2"
+                required
+              />
+              <textarea
+                name="description"
+                placeholder="Description"
+                onChange={handleFormChange}
+                value={form.description}
+                className="border rounded w-full p-2"
+                required
+              />
+              <select
+                name="category"
+                onChange={handleFormChange}
+                value={form.category}
+                className="border rounded w-full p-2"
+                required
               >
-                ✕
-              </button>
-            </div>
+                <option value="">Select category</option>
+                {categories.map((c) => (
+                  <option key={c._id} value={c._id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
 
-            <form className="space-y-3" onSubmit={handleFormSubmit}>
-              <div>
-                <label className="block text-xs font-medium mb-1">
-                  Name
-                </label>
+              <div className="grid grid-cols-2 gap-2">
                 <input
-                  name="name"
-                  value={form.name}
+                  type="number"
+                  name="price"
+                  placeholder="Price"
                   onChange={handleFormChange}
-                  required
-                  className="w-full border rounded px-3 py-2 text-sm"
-                  placeholder="Product name"
+                  value={form.price}
+                  className="border rounded p-2"
+                />
+                <input
+                  type="number"
+                  name="discountPrice"
+                  placeholder="Discount Price"
+                  onChange={handleFormChange}
+                  value={form.discountPrice}
+                  className="border rounded p-2"
                 />
               </div>
-
-              <div>
-                <label className="block text-xs font-medium mb-1">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  value={form.description}
-                  onChange={handleFormChange}
-                  rows={3}
-                  className="w-full border rounded px-3 py-2 text-sm"
-                  placeholder="Short description"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium mb-1">
-                    Category
-                  </label>
-                  <select
-                    name="category"
-                    value={form.category}
-                    onChange={handleFormChange}
-                    required
-                    className="w-full border rounded px-3 py-2 text-sm"
-                  >
-                    <option value="">Select category</option>
-                    {categories.map((cat) => (
-                      <option key={cat._id} value={cat._id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium mb-1">
-                    Price
-                  </label>
-                  <input
-                    type="number"
-                    name="price"
-                    value={form.price}
-                    onChange={handleFormChange}
-                    required
-                    className="w-full border rounded px-3 py-2 text-sm"
-                    placeholder="0"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium mb-1">
-                    Discount Price (optional)
-                  </label>
-                  <input
-                    type="number"
-                    name="discountPrice"
-                    value={form.discountPrice}
-                    onChange={handleFormChange}
-                    className="w-full border rounded px-3 py-2 text-sm"
-                    placeholder="0"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium mb-1">
-                    Stock
-                  </label>
-                  <input
-                    type="number"
-                    name="stock"
-                    value={form.stock}
-                    onChange={handleFormChange}
-                    required
-                    className="w-full border rounded px-3 py-2 text-sm"
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-
+              <input
+                type="number"
+                name="stock"
+                placeholder="Stock"
+                onChange={handleFormChange}
+                value={form.stock}
+                className="border rounded w-full p-2"
+              />
+              <input
+                type="file"
+                multiple
+                name="images"
+                onChange={handleFormChange}
+                className="w-full"
+              />
               <div className="flex items-center gap-2">
                 <input
-                  id="isActive"
                   type="checkbox"
                   name="isActive"
                   checked={form.isActive}
                   onChange={handleFormChange}
-                  className="h-4 w-4"
                 />
-                <label htmlFor="isActive" className="text-sm">
-                  Active
-                </label>
+                <label>Active</label>
               </div>
-
-              <div>
-                <label className="block text-xs font-medium mb-1">
-                  Images
-                </label>
-                <input
-                  type="file"
-                  name="images"
-                  multiple
-                  onChange={handleFormChange}
-                  className="w-full text-sm"
-                />
-                <p className="text-[11px] text-gray-500 mt-1">
-                  You can upload one or more product images.
-                </p>
-              </div>
-
-              <div className="flex justify-end gap-2 mt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFormOpen(false);
-                    resetForm();
-                  }}
-                  className="px-3 py-2 text-sm border rounded"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-4 py-2 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-60"
-                >
-                  {saving
-                    ? "Saving..."
-                    : editingProduct
-                    ? "Update Product"
-                    : "Create Product"}
-                </button>
-              </div>
+              <button className="bg-indigo-600 hover:bg-indigo-700 text-white w-full py-2 rounded">
+                {savingProduct
+                  ? "Saving..."
+                  : editingProduct
+                  ? "Update Product"
+                  : "Add Product"}
+              </button>
             </form>
           </div>
         </div>
       )}
+
+      {/* ================= ORDERS ================= */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h2 className="text-xl font-semibold mb-4">My Orders</h2>
+
+        {/* Add New Status */}
+        <div className="flex flex-col sm:flex-row items-center gap-2 mb-4">
+          <input
+            type="text"
+            placeholder="New order status"
+            value={newStatus}
+            onChange={(e) => setNewStatus(e.target.value)}
+            className="border rounded px-3 py-2 w-full sm:w-1/3"
+          />
+          <button
+            onClick={handleCreateStatus}
+            disabled={creatingStatus}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+          >
+            {creatingStatus ? "Adding..." : "Add Status"}
+          </button>
+        </div>
+
+        {loadingOrders ? (
+          <p className="text-gray-500">Loading orders...</p>
+        ) : vendorOrders.length === 0 ? (
+          <p className="text-gray-500">No orders found.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm border border-gray-200 rounded-lg">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="p-2">Order ID</th>
+                  <th className="p-2">Customer</th>
+                  <th className="p-2">Products</th>
+                  <th className="p-2">Total</th>
+                  <th className="p-2">Status</th>
+                  <th className="p-2">Update Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vendorOrders.map((o) => (
+                  <tr key={o._id} className="border-t hover:bg-gray-50">
+                    <td className="p-2">{o._id}</td>
+                    <td className="p-2">
+                      {o.customer?.name}
+                      <br />
+                      <span className="text-xs text-gray-500">
+                        {o.customer?.email}
+                      </span>
+                    </td>
+                    <td className="p-2">
+                      {o.products.map((i) => (
+                        <div key={i._id} className="text-xs">
+                          {i.product?.name} × {i.quantity}
+                        </div>
+                      ))}
+                    </td>
+                    <td className="p-2">₹{o.totalAmount}</td>
+                    <td className="p-2">{o.orderStatus}</td>
+                    <td className="p-2">
+                      <select
+                        value={o.orderStatus}
+                        onChange={(e) =>
+                          handleOrderStatusChange(o._id, e.target.value)
+                        }
+                        className="border px-2 py-1 text-sm rounded"
+                      >
+                        {orderStatusOptions.map((st) => (
+                          <option key={st} value={st}>
+                            {st}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
