@@ -1,53 +1,77 @@
 // src/pages/LoginPage.jsx
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { loginUser, verifyOtp } from "../../api/api";
+import { loginUser, verifyOtp, forgotPassword } from "../../api/api";
 
 export default function LoginPage({ setRole }) {
   const navigate = useNavigate();
+
+  // 1 = Login | 2 = OTP
   const [step, setStep] = useState(1);
+  const [showForgot, setShowForgot] = useState(false);
+
   const [form, setForm] = useState({ email: "", password: "" });
   const [otp, setOtp] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  /* ================= HELPERS ================= */
+
+  const resetMessages = () => {
+    setError("");
+    setSuccess("");
+  };
 
   const handleChange = (e) => {
     setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
   };
 
-  // -------------------------
-  // LOGIN SUBMIT
-  // -------------------------
+  const saveAuth = (res) => {
+    localStorage.setItem("token", res.token);
+    localStorage.setItem("role", res.role);
+    localStorage.setItem("userName", res.user?.name || "");
+    setRole?.(res.role);
+    navigate(res.role === "admin" ? "/admin/panel" : res.role === "vendor" ? "/vendor" : "/products");
+  };
+
+  /* ================= LOGIN ================= */
+
   const submitCredentials = async (e) => {
     e.preventDefault();
-    setError("");
+    resetMessages();
     setLoading(true);
+
+    if (!form.email || !form.password) {
+      setError("Email and password are required");
+      setLoading(false);
+      return;
+    }
 
     try {
       const res = await loginUser(form);
 
-      // ADMIN LOGIN
+      // ✅ ADMIN LOGIN
       if (res?.token && res.role === "admin") {
-        localStorage.setItem("token", res.token);
-        localStorage.setItem("role", "admin");
-        localStorage.setItem("userName", res.user?.name || "");
-        if (setRole) setRole("admin");
-        navigate("/admin/panel");
+        saveAuth(res);
         return;
       }
 
-      // NEW USER LOGIN
+      // ✅ VENDOR / CUSTOMER LOGIN
       if (res?.token && (res.role === "vendor" || res.role === "customer")) {
-        localStorage.setItem("token", res.token);
-        localStorage.setItem("role", res.role);
-        localStorage.setItem("userName", res.user?.name || "");
-        if (setRole) setRole(res.role);
-        navigate(res.role === "vendor" ? "/vendor" : "/products");
+        saveAuth(res);
         return;
       }
 
-      // OLD USER → OTP REQUIRED
-      setStep(2);
+      // ✅ OTP FLOW FOR OLD USERS
+      if (res?.otpSent) {
+        setStep(2);
+        setSuccess("OTP sent to your email");
+        return;
+      }
+
+      throw new Error("Invalid login response");
     } catch (err) {
       setError(err.message || "Login failed");
     } finally {
@@ -55,43 +79,69 @@ export default function LoginPage({ setRole }) {
     }
   };
 
-  // -------------------------
-  // OTP SUBMIT
-  // -------------------------
+  /* ================= OTP VERIFY ================= */
+
   const submitOtp = async (e) => {
     e.preventDefault();
-    setError("");
+    resetMessages();
     setLoading(true);
+
+    if (!otp) {
+      setError("OTP is required");
+      setLoading(false);
+      return;
+    }
 
     try {
       const res = await verifyOtp({ email: form.email, otp });
 
-      if (res?.token) {
-        localStorage.setItem("token", res.token);
-        localStorage.setItem("role", res.role);
-        localStorage.setItem("userName", res.user?.name || "");
+      if (!res?.token) throw new Error("OTP verification failed");
 
-        if (setRole) setRole(res.role);
-        navigate(res.role === "vendor" ? "/vendor" : "/products");
-        return;
-      }
-
-      setError("Invalid OTP");
-    } catch {
-      setError("OTP verification failed");
+      saveAuth(res);
+    } catch (err) {
+      setError(err.message || "OTP verification failed");
     } finally {
       setLoading(false);
     }
   };
 
+  /* ================= FORGOT PASSWORD ================= */
+
+  const submitForgotPassword = async (e) => {
+    e.preventDefault();
+    resetMessages();
+    setLoading(true);
+
+    if (!form.email) {
+      setError("Email is required");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      await forgotPassword({ email: form.email });
+      setSuccess("Password reset link sent to your email");
+      setShowForgot(false);
+    } catch (err) {
+      setError(err.message || "Failed to send reset email");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ================= UI ================= */
+
   return (
     <div className="max-w-md mx-auto px-4 py-8">
-      <h1 className="text-xl font-semibold mb-4">Login</h1>
+      <h1 className="text-xl font-semibold mb-4">
+        {showForgot ? "Forgot Password" : step === 2 ? "Verify OTP" : "Login"}
+      </h1>
 
-      {error && <p className="text-red-600">{error}</p>}
+      {error && <p className="text-red-600 mb-2">{error}</p>}
+      {success && <p className="text-green-600 mb-2">{success}</p>}
 
-      {/* LOGIN FORM */}
-      {step === 1 && (
+      {/* ================= LOGIN FORM ================= */}
+      {step === 1 && !showForgot && (
         <form onSubmit={submitCredentials} className="space-y-3 p-4 border rounded">
           <input
             type="email"
@@ -102,6 +152,7 @@ export default function LoginPage({ setRole }) {
             required
             className="w-full border px-3 py-2 rounded"
           />
+
           <input
             type="password"
             name="password"
@@ -119,15 +170,24 @@ export default function LoginPage({ setRole }) {
           >
             {loading ? "Processing..." : "Login"}
           </button>
+
+          <button
+            type="button"
+            onClick={() => setShowForgot(true)}
+            className="text-sm text-indigo-600 underline"
+          >
+            Forgot Password?
+          </button>
         </form>
       )}
 
-      {/* OTP FORM */}
-      {step === 2 && (
+      {/* ================= OTP FORM ================= */}
+      {step === 2 && !showForgot && (
         <form onSubmit={submitOtp} className="space-y-3 p-4 border rounded">
           <p className="text-sm">
-            OTP sent to <b>{form.email}</b>  
-            <br />Use dummy OTP: <b>123456</b>
+            OTP sent to <b>{form.email}</b>
+            <br />
+            Dummy OTP: <b>123456</b>
           </p>
 
           <input
@@ -147,14 +207,49 @@ export default function LoginPage({ setRole }) {
             {loading ? "Verifying..." : "Verify OTP"}
           </button>
 
-          <button type="button" onClick={() => setStep(1)} className="text-sm underline">
+          <button
+            type="button"
+            onClick={() => setStep(1)}
+            className="text-sm underline"
+          >
+            Back to Login
+          </button>
+        </form>
+      )}
+
+      {/* ================= FORGOT PASSWORD FORM ================= */}
+      {showForgot && (
+        <form onSubmit={submitForgotPassword} className="space-y-3 p-4 border rounded">
+          <input
+            type="email"
+            name="email"
+            placeholder="Enter your email"
+            value={form.email}
+            onChange={handleChange}
+            required
+            className="w-full border px-3 py-2 rounded"
+          />
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-indigo-600 text-white py-2 rounded"
+          >
+            {loading ? "Sending..." : "Send Reset Link"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowForgot(false)}
+            className="text-sm underline"
+          >
             Back to Login
           </button>
         </form>
       )}
 
       <p className="mt-3 text-xs">
-        Don't have an account?
+        Don’t have an account?
         <Link to="/register" className="text-indigo-600"> Register</Link>
       </p>
     </div>

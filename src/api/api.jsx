@@ -1,5 +1,3 @@
-// src/api/api.jsx
-
 /* ================= BASE URL ================= */
 
 const API_BASE =
@@ -70,6 +68,37 @@ export async function verifyOtp(payload) {
   return handleResponse(res);
 }
 
+// ✅ FORGOT PASSWORD
+export async function forgotPassword(payload) {
+  const res = await fetch(`${API_BASE}/users/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  return handleResponse(res);
+}
+
+// ✅ RESET PASSWORD
+export async function resetPassword(payload) {
+  const res = await fetch(`${API_BASE}/users/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  return handleResponse(res);
+}
+
+// ✅ GET PROFILE
+export async function fetchMyProfile() {
+  const res = await fetch(`${API_BASE}/users/profile`, {
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse(res);
+}
+
 /* ================= PRODUCTS ================= */
 
 export async function fetchProducts() {
@@ -78,6 +107,8 @@ export async function fetchProducts() {
 }
 
 export async function fetchProductById(id) {
+  if (!id) throw new Error("Product ID is required");
+
   const res = await fetch(`${API_BASE}/products/${id}`);
   return handleResponse(res);
 }
@@ -113,7 +144,7 @@ export async function createOrder(orderData) {
   return handleResponse(res);
 }
 
-// ✅ GET SINGLE ORDER BY ID
+// ✅ GET SINGLE ORDER BY ID ✅✅ (THIS FIXES YOUR ERROR)
 export async function fetchOrderById(orderId) {
   if (!orderId) throw new Error("Order ID is required");
 
@@ -126,13 +157,13 @@ export async function fetchOrderById(orderId) {
 
 /* ================= STRIPE ================= */
 
-export async function createStripeCheckoutSession(payload) {
+export async function createStripeCheckoutSession(products) {
   const res = await fetch(
     `${API_BASE}/payments/create-checkout-session`,
     {
       method: "POST",
       headers: getAuthHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ products: payload }),
+      body: JSON.stringify({ products }),
     }
   );
 
@@ -140,6 +171,8 @@ export async function createStripeCheckoutSession(payload) {
 }
 
 export async function fetchStripeSessionStatus(sessionId) {
+  if (!sessionId) throw new Error("Session ID is required");
+
   const res = await fetch(
     `${API_BASE}/payments/session-status?session_id=${sessionId}`,
     {
@@ -164,14 +197,16 @@ export async function createPayment(payload) {
 
 /* ================= ORDER STATUS ================= */
 
-export async function fetchOrderStatuses() {
-  const res = await fetch(`${API_BASE}/order-statuses/customer/${orderId}`, {
+// ✅ CUSTOMER – GET ALL MY ORDER STATUSES
+export async function fetchMyOrderStatuses() {
+  const res = await fetch(`${API_BASE}/order-statuses/my`, {
     headers: getAuthHeaders(),
   });
 
   return handleResponse(res);
 }
 
+// ✅ GET STATUS BY ORDER ID ✅✅ (BUG FIXED)
 export async function fetchOrderStatusByOrderId(orderId) {
   if (!orderId) throw new Error("Order ID is required");
 
@@ -184,19 +219,13 @@ export async function fetchOrderStatusByOrderId(orderId) {
 
   return handleResponse(res);
 }
+/* ================= CUSTOMER ORDERS ================= */
+
+// ✅ CUSTOMER – GET MY ORDERS (USED IN HELPDESK)
 export async function fetchCustomerOrders() {
-  const token = localStorage.getItem("token");
   const res = await fetch(`${API_BASE}/orders/my-orders`, {
-    headers: {
-      Authorization: token ? `Bearer ${token}` : "",
-      "Content-Type": "application/json",
-    },
+    headers: getAuthHeaders(),
   });
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to fetch orders");
-  }
-
-  return res.json(); // should return array of orders
+  return handleResponse(res);
 }

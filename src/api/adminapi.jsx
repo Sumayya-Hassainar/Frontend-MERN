@@ -1,4 +1,3 @@
-// src/api/adminApi.js
 const API_BASE = import.meta.env.VITE_API_URL || "https://backend-mern-ex49.onrender.com/api";
 
 /* ================= AUTH HEADER ================= */
@@ -9,184 +8,133 @@ function getAuthHeaders() {
     "Content-Type": "application/json",
   };
 }
-
 /* ================= VENDOR MANAGEMENT ================= */
-
-// GET ALL VENDORS
 export async function fetchVendors() {
   const res = await fetch(`${API_BASE}/vendors`, { headers: getAuthHeaders() });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to fetch vendors");
-  }
+  if (!res.ok) throw new Error("Failed to fetch vendors");
   return res.json();
 }
 
-// GET PENDING VENDORS
 export async function fetchPendingVendors() {
   const res = await fetch(`${API_BASE}/admin/vendors/pending`, { headers: getAuthHeaders() });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to fetch pending vendors");
-  }
+  if (!res.ok) throw new Error("Failed to fetch pending vendors");
   return res.json();
 }
 
-// CREATE VENDOR
 export async function createVendor(payload) {
   const res = await fetch(`${API_BASE}/vendors`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to create vendor");
-  }
+  if (!res.ok) throw new Error("Failed to create vendor");
   return res.json();
 }
 
-// UPDATE VENDOR
 export async function updateVendor(id, payload) {
   const res = await fetch(`${API_BASE}/vendors/${id}`, {
     method: "PUT",
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to update vendor");
-  }
+  if (!res.ok) throw new Error("Failed to update vendor");
   return res.json();
 }
 
-// DELETE VENDOR
 export async function deleteVendor(id) {
   const res = await fetch(`${API_BASE}/vendors/${id}`, {
     method: "DELETE",
     headers: getAuthHeaders(),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to delete vendor");
-  }
+  if (!res.ok) throw new Error("Failed to delete vendor");
   return res.json();
 }
 
-// APPROVE VENDOR
 export async function approveVendorRequest(id) {
-  const res = await fetch(`${API_BASE}/vendors/${id}/approve`, {
-    method: "PATCH",
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to approve vendor");
-  }
+  const res = await fetch(`${API_BASE}/vendors/${id}/approve`, { method: "PATCH", headers: getAuthHeaders() });
+  if (!res.ok) throw new Error("Failed to approve vendor");
   return res.json();
 }
 
-// REJECT VENDOR
 export async function rejectVendorRequest(id) {
-  const res = await fetch(`${API_BASE}/vendors/${id}/reject`, {
-    method: "PATCH",
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to reject vendor");
-  }
+  const res = await fetch(`${API_BASE}/vendors/${id}/reject`, { method: "PATCH", headers: getAuthHeaders() });
+  if (!res.ok) throw new Error("Failed to reject vendor");
   return res.json();
 }
 
-/* ================= ORDER MANAGEMENT (ADMIN) ================= */
-
-// FETCH ALL ORDERS
+/* ================= ORDER MANAGEMENT ================= */
 export async function fetchAllOrders() {
   const res = await fetch(`${API_BASE}/orders`, { headers: getAuthHeaders() });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to fetch orders");
-  }
+  if (!res.ok) throw new Error("Failed to fetch orders");
   return res.json();
 }
 
-// ASSIGN ORDER TO VENDOR
 export async function sendOrderToVendor(orderId, vendorId) {
   const res = await fetch(`${API_BASE}/orders/${orderId}/assign`, {
     method: "PUT",
     headers: getAuthHeaders(),
     body: JSON.stringify({ vendorId }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to assign order");
-  }
+  if (!res.ok) throw new Error("Failed to assign order");
   return res.json();
 }
 
-// FORCE UPDATE ORDER STATUS
+// ✅ Admin updates order
 export async function adminUpdateOrderStatus(orderId, status) {
   const res = await fetch(`${API_BASE}/orders/${orderId}/status`, {
     method: "PUT",
     headers: getAuthHeaders(),
     body: JSON.stringify({ status }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to update order status");
-  }
+  if (!res.ok) throw new Error("Failed to update order status");
   return res.json();
 }
 
-// DELETE ORDER
+// ✅ Vendor updates order
+export async function vendorUpdateOrderStatus(orderId, status) {
+  const res = await fetch(`${API_BASE}/order-statuses/vendor/${orderId}/status`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) throw new Error("Failed to update vendor order status");
+  return res.json();
+}
+
 export async function deleteOrder(orderId) {
   const res = await fetch(`${API_BASE}/orders/${orderId}`, {
     method: "DELETE",
     headers: getAuthHeaders(),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to delete order");
-  }
+  if (!res.ok) throw new Error("Failed to delete order");
   return res.json();
 }
 
-/* ================= ORDER STATUS MASTER (ADMIN ONLY) ================= */
-
-// GET ALL ORDER STATUSES
+/* ================= ORDER STATUS MASTER ================= */
 export async function fetchOrderStatuses() {
-  const res = await fetch(`${API_BASE}/admin/order-statuses`, { headers: getAuthHeaders() });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to fetch order statuses");
-  }
-  return res.json();
+  const res = await fetch(`${API_BASE}/order-statuses`, { headers: getAuthHeaders() });
+  const data = await res.json().catch(() => ({}));
+  console.log("Status:", res.status, "OK?", res.ok, "Data:", data);
+
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch order statuses");
+  return data;
 }
 
-// UPDATE ORDER STATUS
-export async function updateOrderStatus(id, payload) {
-  const res = await fetch(`${API_BASE}/admin/order-statuses/${id}`, {
+export async function updateOrderStatusMaster(id, payload) {
+  const res = await fetch(`${API_BASE}/order-statuses/${id}`, {
     method: "PUT",
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to update order status");
-  }
+  if (!res.ok) throw new Error("Failed to update order status master");
   return res.json();
 }
 
-// DELETE ORDER STATUS
 export async function deleteOrderStatus(id) {
-  const res = await fetch(`${API_BASE}/admin/order-statuses/${id}`, {
+  const res = await fetch(`${API_BASE}/order-statuses/${id}`, {
     method: "DELETE",
     headers: getAuthHeaders(),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to delete order status");
-  }
+  if (!res.ok) throw new Error("Failed to delete order status");
   return res.json();
 }
