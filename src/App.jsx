@@ -48,6 +48,8 @@ import VendorDashboard from "./pages/vendor/VendorDashboard.jsx";
 // ================= API =================
 import { fetchMyNotifications, markNotificationAsRead } from "./api/accountapi.jsx";
 import ResetPassword from "./utils/ResetPassword.jsx";
+import VendorHeader from "./pages/vendor/VendorHeader.jsx";
+import VendorOrders from "./pages/vendor/VendorOrders.jsx";
 
 // ================= REVIEW WRAPPER =================
 const ProductReviews = ({ role }) => {
@@ -119,6 +121,8 @@ function App() {
         {/* ✅ ROLE BASED HEADER */}
         {role === "admin" ? (
           <AdminHeader setRole={setRole} />
+        ) : role === "vendor" ? (
+          <VendorHeader setRole={setRole} />
         ) : (
           <Header
             role={role}
@@ -132,6 +136,7 @@ function App() {
             setQuery={setQuery}
           />
         )}
+
 
         <main className="flex-1">
           <Routes>
@@ -160,7 +165,7 @@ function App() {
 
             {/* ================= ADMIN ================= */}
             <Route path="/admin" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
-            <Route path="/admin/orders" element={<ProtectedRoute allowedRoles={["admin"]}><AdminOrders/></ProtectedRoute>} />
+            <Route path="/admin/orders" element={<ProtectedRoute allowedRoles={["admin"]}><AdminOrders /></ProtectedRoute>} />
             <Route path="/admin/panel" element={<ProtectedRoute allowedRoles={["admin"]}><AdminPanel /></ProtectedRoute>} />
 
             {/* ================= VENDOR ================= */}
@@ -168,6 +173,14 @@ function App() {
             <Route path="/vendor/register" element={<VendorRegisterPage />} />
             <Route path="/vendor/login" element={<VendorLoginPage setRole={setRole} />} />
             <Route path="/vendor/dashboard" element={<ProtectedRoute allowedRoles={["vendor"]}><VendorDashboard /></ProtectedRoute>} />
+            <Route
+              path="/vendor/orders"
+              element={
+                <ProtectedRoute allowedRoles={["vendor"]}>
+                  <VendorOrders />
+                </ProtectedRoute>
+              }
+            />
 
             {/* ================= 404 ================= */}
             <Route path="*" element={

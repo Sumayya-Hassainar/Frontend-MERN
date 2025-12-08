@@ -1,11 +1,8 @@
-// src/api/vendorApi.jsx
-
 const API_BASE =
   import.meta.env.VITE_API_URL ||
   "https://backend-mern-ex49.onrender.com/api";
 
 /* ================= AUTH HEADER ================= */
-
 function getAuthHeaders() {
   const token = localStorage.getItem("token");
 
@@ -21,7 +18,6 @@ function getAuthHeaders() {
 }
 
 /* ================= GLOBAL ERROR HANDLER ================= */
-
 async function handleResponse(res, defaultMsg) {
   if (!res.ok) {
     let message = defaultMsg;
@@ -34,8 +30,7 @@ async function handleResponse(res, defaultMsg) {
   return res.json();
 }
 
-/* ===================== VENDOR AUTH ===================== */
-
+/* ================= VENDOR AUTH ================= */
 export async function registerVendor(payload) {
   const res = await fetch(`${API_BASE}/users/register`, {
     method: "POST",
@@ -56,15 +51,13 @@ export async function loginVendor(payload) {
   return handleResponse(res, "Vendor login failed");
 }
 
-/* ===================== CATEGORIES ===================== */
-
+/* ================= CATEGORIES ================= */
 export async function fetchCategories() {
   const res = await fetch(`${API_BASE}/categories`);
   return handleResponse(res, "Failed to fetch categories");
 }
 
-/* ===================== VENDOR PRODUCTS ===================== */
-
+/* ================= VENDOR PRODUCTS ================= */
 export async function getVendorProducts(categoryId) {
   const params = categoryId ? `?category=${categoryId}` : "";
 
@@ -84,9 +77,7 @@ export async function createVendorProduct(formData) {
 
   const res = await fetch(`${API_BASE}/products`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`, // ✅ NO JSON HEADER FOR FORM-DATA
-    },
+    headers: { Authorization: `Bearer ${token}` }, // form-data must NOT have JSON header
     body: formData,
   });
 
@@ -98,9 +89,7 @@ export async function updateVendorProduct(id, formData) {
 
   const res = await fetch(`${API_BASE}/products/${id}`, {
     method: "PUT",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: { Authorization: `Bearer ${token}` },
     body: formData,
   });
 
@@ -116,10 +105,13 @@ export async function deleteVendorProduct(id) {
   return handleResponse(res, "Failed to delete product");
 }
 
-/* ================= ✅ VENDOR ORDER MASTER STATUS ================= */
-
-// ✅ VENDOR CREATES ORDER STATUS (MASTER)
+/* ================= VENDOR ORDER STATUS ================= */
+// CREATE NEW ORDER STATUS (MASTER)
 export async function createVendorOrderStatus(payload) {
+  if (!payload?.name?.trim()) throw new Error("Status name is required");
+  if (!payload?.order) throw new Error("Order ID is required");
+  if (!payload?.customer) throw new Error("Customer ID is required");
+
   const res = await fetch(`${API_BASE}/order-statuses/vendor`, {
     method: "POST",
     headers: getAuthHeaders(),
@@ -129,9 +121,8 @@ export async function createVendorOrderStatus(payload) {
   return handleResponse(res, "Failed to create order status");
 }
 
-/* ================= ✅ VENDOR ORDERS ================= */
 
-// ✅ GET VENDOR ASSIGNED ORDERS
+/* ================= VENDOR ORDERS ================= */
 export async function fetchVendorOrders() {
   const res = await fetch(`${API_BASE}/orders/vendor`, {
     method: "GET",
@@ -141,16 +132,15 @@ export async function fetchVendorOrders() {
   return handleResponse(res, "Failed to fetch vendor orders");
 }
 
-// ✅ VENDOR UPDATES REAL ORDER STATUS
 export async function updateVendorOrderStatus(orderId, status) {
-  const res = await fetch(
-    `${API_BASE}/order-statuses/vendor/${orderId}/status`,
-    {
-      method: "PATCH",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ status }),
-    }
-  );
+  const trimmedStatus = (status || "").trim();
+  if (!trimmedStatus) throw new Error("Vendor status update failed: status is required");
+
+  const res = await fetch(`${API_BASE}/order-statuses/vendor/${orderId}/status`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ status: trimmedStatus }),
+  });
 
   return handleResponse(res, "Failed to update order status");
 }
