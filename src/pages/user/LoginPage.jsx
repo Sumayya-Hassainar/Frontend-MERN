@@ -6,18 +6,13 @@ import { loginUser, verifyOtp, forgotPassword } from "../../api/api";
 export default function LoginPage({ setRole }) {
   const navigate = useNavigate();
 
-  // 1 = Login | 2 = OTP
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(1); // 1 = Login | 2 = OTP
   const [showForgot, setShowForgot] = useState(false);
-
   const [form, setForm] = useState({ email: "", password: "" });
   const [otp, setOtp] = useState("");
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-
-  /* ================= HELPERS ================= */
 
   const resetMessages = () => {
     setError("");
@@ -36,6 +31,20 @@ export default function LoginPage({ setRole }) {
     navigate(res.role === "admin" ? "/admin/panel" : res.role === "vendor" ? "/vendor" : "/products");
   };
 
+  /* ================= VALIDATION ================= */
+
+  const validateEmail = (email) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  const validatePassword = (password) => {
+    return password.length >= 6; // simple length check
+  };
+
+  const validateOtp = (otp) => {
+    return /^\d{6}$/.test(otp); // 6 digit numeric OTP
+  };
+
   /* ================= LOGIN ================= */
 
   const submitCredentials = async (e) => {
@@ -49,22 +58,31 @@ export default function LoginPage({ setRole }) {
       return;
     }
 
+    if (!validateEmail(form.email)) {
+      setError("Invalid email format");
+      setLoading(false);
+      return;
+    }
+
+    if (!validatePassword(form.password)) {
+      setError("Password must be at least 6 characters");
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await loginUser(form);
 
-      // ✅ ADMIN LOGIN
       if (res?.token && res.role === "admin") {
         saveAuth(res);
         return;
       }
 
-      // ✅ VENDOR / CUSTOMER LOGIN
       if (res?.token && (res.role === "vendor" || res.role === "customer")) {
         saveAuth(res);
         return;
       }
 
-      // ✅ OTP FLOW FOR OLD USERS
       if (res?.otpSent) {
         setStep(2);
         setSuccess("OTP sent to your email");
@@ -92,11 +110,15 @@ export default function LoginPage({ setRole }) {
       return;
     }
 
+    if (!validateOtp(otp)) {
+      setError("OTP must be a 6-digit number");
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await verifyOtp({ email: form.email, otp });
-
       if (!res?.token) throw new Error("OTP verification failed");
-
       saveAuth(res);
     } catch (err) {
       setError(err.message || "OTP verification failed");
@@ -114,6 +136,12 @@ export default function LoginPage({ setRole }) {
 
     if (!form.email) {
       setError("Email is required");
+      setLoading(false);
+      return;
+    }
+
+    if (!validateEmail(form.email)) {
+      setError("Invalid email format");
       setLoading(false);
       return;
     }
@@ -140,7 +168,6 @@ export default function LoginPage({ setRole }) {
       {error && <p className="text-red-600 mb-2">{error}</p>}
       {success && <p className="text-green-600 mb-2">{success}</p>}
 
-      {/* ================= LOGIN FORM ================= */}
       {step === 1 && !showForgot && (
         <form onSubmit={submitCredentials} className="space-y-3 p-4 border rounded">
           <input
@@ -152,7 +179,6 @@ export default function LoginPage({ setRole }) {
             required
             className="w-full border px-3 py-2 rounded"
           />
-
           <input
             type="password"
             name="password"
@@ -162,26 +188,15 @@ export default function LoginPage({ setRole }) {
             required
             className="w-full border px-3 py-2 rounded"
           />
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 text-white py-2 rounded"
-          >
+          <button type="submit" disabled={loading} className="w-full bg-indigo-600 text-white py-2 rounded">
             {loading ? "Processing..." : "Login"}
           </button>
-
-          <button
-            type="button"
-            onClick={() => setShowForgot(true)}
-            className="text-sm text-indigo-600 underline"
-          >
+          <button type="button" onClick={() => setShowForgot(true)} className="text-sm text-indigo-600 underline">
             Forgot Password?
           </button>
         </form>
       )}
 
-      {/* ================= OTP FORM ================= */}
       {step === 2 && !showForgot && (
         <form onSubmit={submitOtp} className="space-y-3 p-4 border rounded">
           <p className="text-sm">
@@ -189,7 +204,6 @@ export default function LoginPage({ setRole }) {
             <br />
             Dummy OTP: <b>123456</b>
           </p>
-
           <input
             type="text"
             placeholder="Enter OTP"
@@ -198,26 +212,15 @@ export default function LoginPage({ setRole }) {
             required
             className="w-full border px-3 py-2 rounded"
           />
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 text-white py-2 rounded"
-          >
+          <button type="submit" disabled={loading} className="w-full bg-indigo-600 text-white py-2 rounded">
             {loading ? "Verifying..." : "Verify OTP"}
           </button>
-
-          <button
-            type="button"
-            onClick={() => setStep(1)}
-            className="text-sm underline"
-          >
+          <button type="button" onClick={() => setStep(1)} className="text-sm underline">
             Back to Login
           </button>
         </form>
       )}
 
-      {/* ================= FORGOT PASSWORD FORM ================= */}
       {showForgot && (
         <form onSubmit={submitForgotPassword} className="space-y-3 p-4 border rounded">
           <input
@@ -229,20 +232,10 @@ export default function LoginPage({ setRole }) {
             required
             className="w-full border px-3 py-2 rounded"
           />
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 text-white py-2 rounded"
-          >
+          <button type="submit" disabled={loading} className="w-full bg-indigo-600 text-white py-2 rounded">
             {loading ? "Sending..." : "Send Reset Link"}
           </button>
-
-          <button
-            type="button"
-            onClick={() => setShowForgot(false)}
-            className="text-sm underline"
-          >
+          <button type="button" onClick={() => setShowForgot(false)} className="text-sm underline">
             Back to Login
           </button>
         </form>

@@ -1,12 +1,11 @@
-// src/pages/VendorRegisterPage.jsx
 import React, { useState } from "react";
-import { useNavigate,Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { registerVendor } from "../../api/vendorApi";
 
 export default function VendorRegisterPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
-    name: "",          // owner name (User)
+    name: "",
     email: "",
     password: "",
     shopName: "",
@@ -26,15 +25,38 @@ export default function VendorRegisterPage() {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  /* ================= VALIDATION ================= */
+  const validateForm = () => {
+    if (!form.name.trim()) return "Full name is required";
+    if (!form.email.trim()) return "Email is required";
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) return "Invalid email address";
+    if (!form.password) return "Password is required";
+    if (form.password.length < 6) return "Password must be at least 6 characters";
+    if (!form.shopName.trim()) return "Shop name is required";
+    if (!form.address.trim()) return "Business address is required";
+
+    // If any bank detail is filled, all must be filled
+    const bankFields = [form.accountName, form.accountNumber, form.ifscCode, form.bankName];
+    const filledBankFields = bankFields.filter((f) => f.trim() !== "");
+    if (filledBankFields.length > 0 && filledBankFields.length < 4)
+      return "If providing bank details, all fields are required";
+
+    return null;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
 
+    setLoading(true);
     try {
-      // Payload shape – match whatever your backend expects
       const payload = {
-        // if your backend simultaneously creates User + Vendor:
         name: form.name,
         email: form.email,
         password: form.password,
@@ -42,12 +64,15 @@ export default function VendorRegisterPage() {
         description: form.description,
         gstNumber: form.gstNumber,
         address: form.address,
-        bankDetails: {
-          accountName: form.accountName,
-          accountNumber: form.accountNumber,
-          ifscCode: form.ifscCode,
-          bankName: form.bankName,
-        },
+        bankDetails:
+          form.accountName && form.accountNumber && form.ifscCode && form.bankName
+            ? {
+                accountName: form.accountName,
+                accountNumber: form.accountNumber,
+                ifscCode: form.ifscCode,
+                bankName: form.bankName,
+              }
+            : undefined,
       };
 
       const data = await registerVendor(payload);
@@ -77,7 +102,7 @@ export default function VendorRegisterPage() {
       )}
 
       <form onSubmit={handleSubmit} className="bg-white border rounded-lg p-4 space-y-4">
-        {/* Owner / user details */}
+        {/* Account Details */}
         <div>
           <h2 className="text-sm font-semibold mb-2">Account Details</h2>
           <div className="grid md:grid-cols-2 gap-3">
@@ -110,7 +135,7 @@ export default function VendorRegisterPage() {
           </div>
         </div>
 
-        {/* Shop details */}
+        {/* Shop Details */}
         <div>
           <h2 className="text-sm font-semibold mb-2">Shop Details</h2>
           <div className="space-y-3">
@@ -143,13 +168,14 @@ export default function VendorRegisterPage() {
               onChange={handleChange}
               placeholder="Business address"
               className="border rounded px-3 py-2 text-sm w-full"
+              required
             />
           </div>
         </div>
 
-        {/* Bank details */}
+        {/* Bank Details */}
         <div>
-          <h2 className="text-sm font-semibold mb-2">Bank Details</h2>
+          <h2 className="text-sm font-semibold mb-2">Bank Details (optional)</h2>
           <div className="grid md:grid-cols-2 gap-3">
             <input
               name="accountName"
@@ -190,6 +216,7 @@ export default function VendorRegisterPage() {
           {loading ? "Creating seller account..." : "Create Seller Account"}
         </button>
       </form>
+
       <p className="mt-4 text-sm text-gray-600">
         Already have an account?{" "}
         <Link to="/vendor/login" className="text-indigo-600 hover:underline">

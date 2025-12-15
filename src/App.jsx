@@ -108,16 +108,17 @@ function App() {
     }
   };
 
-  const toggleTheme = () => {
-    const newTheme = theme === "dark" ? "light" : "dark";
-    setTheme(newTheme);
-    localStorage.setItem("theme", newTheme);
-    document.documentElement.classList.toggle("dark", newTheme === "dark");
-  };
+const toggleTheme = () => {
+  const newTheme = theme === "light" ? "dark" : "light";
+  setTheme(newTheme);
+  localStorage.setItem("theme", newTheme);
+  document.documentElement.classList.toggle("dark", newTheme === "dark");
+};
+
 
   return (
     <Provider store={store}>
-      <div className="flex flex-col min-h-screen bg-white text-black">
+     <div >
 
         {/* ================= ROLE BASED HEADER ================= */}
         {role === "admin" ? (
@@ -195,7 +196,10 @@ function App() {
 
         <Footer />
       </div>
+     
     </Provider>
+    
+
   );
 }
 

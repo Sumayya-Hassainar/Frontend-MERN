@@ -9,14 +9,11 @@ export default function Header({
   setRole,
   notifications = [],
   unreadCount = 0,
-  onMarkAsRead = () => {},
+  onMarkAsRead = () => { },
   query,
   setQuery,
 }) {
-  const [theme, setTheme] = useState("light");
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
-
-  // ================= PRODUCT SEARCH =================
   const [allProducts, setAllProducts] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -25,7 +22,7 @@ export default function Header({
   const location = useLocation();
   const totalItems = useSelector(selectTotalItems);
 
-  // LOAD PRODUCTS FOR SEARCH
+  // Load products for search
   useEffect(() => {
     const loadProducts = async () => {
       try {
@@ -38,7 +35,7 @@ export default function Header({
     loadProducts();
   }, []);
 
-  // FILTER SUGGESTIONS
+  // Filter suggestions
   useEffect(() => {
     if (!query?.trim()) {
       setSuggestions([]);
@@ -51,24 +48,6 @@ export default function Header({
     setSuggestions(matches);
     setShowSuggestions(true);
   }, [query, allProducts]);
-
-  // ================= THEME =================
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") || "light";
-    setTheme(savedTheme);
-    if (savedTheme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    const newTheme = theme === "dark" ? "light" : "dark";
-    setTheme(newTheme);
-    document.documentElement.classList.toggle("dark", newTheme === "dark");
-    localStorage.setItem("theme", newTheme);
-  };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -83,11 +62,30 @@ export default function Header({
       navigate("/search");
     }
   };
+    // THEME STATE
+  const [theme, setTheme] = useState(
+    () => localStorage.getItem("theme") || "light"
+  );
+
+  // Apply theme on mount & when theme changes
+  useEffect(() => {
+    const html = document.documentElement;
+    if (theme === "dark") {
+      html.classList.add("dark");
+    } else {
+      html.classList.remove("dark");
+    }
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(theme === "light" ? "dark" : "light");
+
+
 
   return (
     <>
       {/* ================= TOP HEADER ================= */}
-      <header className="bg-[#2874F0] dark:bg-gray-900 text-white sticky top-0 z-40">
+      <header className="bg-[#2874F0] dark:bg-yellow-500 text-white sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center gap-4 relative">
 
           {/* LOGO */}
@@ -135,20 +133,18 @@ export default function Header({
             )}
           </div>
 
-          {/* DARK MODE */}
+          {/* THEME TOGGLE */}
           <button
             onClick={toggleTheme}
-            className="text-sm bg-white text-[#2874F0] px-3 py-1 rounded"
+            className="px-4 py-2 rounded bg-teal-600 text-white"
           >
-            {theme === "dark" ? "☀️" : "🌙"}
+            {theme === "light" ? "🌙 Dark" : "☀️ Light"}
           </button>
 
           {/* NOTIFICATIONS */}
           {role !== "guest" && (
             <div className="relative">
-              <button onClick={() => setShowNotifDropdown(!showNotifDropdown)}>
-                🔔
-              </button>
+              <button onClick={() => setShowNotifDropdown(!showNotifDropdown)}>🔔</button>
               {unreadCount > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-xs px-1.5 rounded-full">
                   {unreadCount}
@@ -156,9 +152,7 @@ export default function Header({
               )}
               {showNotifDropdown && (
                 <div className="absolute right-0 mt-2 w-72 bg-white text-black rounded shadow-lg">
-                  {notifications.length === 0 && (
-                    <p className="p-3 text-sm">No notifications</p>
-                  )}
+                  {notifications.length === 0 && <p className="p-3 text-sm">No notifications</p>}
                   {notifications.map((n) => (
                     <div
                       key={n._id}
@@ -196,12 +190,8 @@ export default function Header({
           {/* DESKTOP AUTH */}
           {role === "guest" ? (
             <div className="hidden md:flex gap-2">
-              <Link to="/login" className="bg-white text-[#2874F0] px-3 py-1 rounded">
-                Login
-              </Link>
-              <Link to="/register" className="border px-3 py-1 rounded">
-                Sign Up
-              </Link>
+              <Link to="/login" className="bg-white text-[#2874F0] px-3 py-1 rounded">Login</Link>
+              <Link to="/register" className="border px-3 py-1 rounded">Sign Up</Link>
             </div>
           ) : (
             <button
@@ -214,7 +204,7 @@ export default function Header({
         </div>
 
         {/* DESKTOP BOTTOM NAV */}
-        <div className="hidden md:block bg-[#2463d0]">
+        <div className="hidden md:block bg-yellow-300">
           <div className="max-w-7xl mx-auto px-4 h-10 flex items-center gap-6 text-sm">
             <Link to="/products">Products</Link>
             <Link to="/orders">Orders</Link>
@@ -231,9 +221,7 @@ export default function Header({
           <Link to="/products" className="flex flex-col items-center">🛍️ Products</Link>
           <Link to="/orders" className="flex flex-col items-center">📦 Orders</Link>
           {role !== "vendor" && (
-            <Link to="/cart" className="flex flex-col items-center text-blue-600 font-bold">
-              🛒 Cart
-            </Link>
+            <Link to="/cart" className="flex flex-col items-center text-blue-600 font-bold">🛒 Cart</Link>
           )}
           <Link to="/wishlist" className="flex flex-col items-center">❤️ Wishlist</Link>
           <Link to="/help-desk" className="flex flex-col items-center">💬 Help</Link>

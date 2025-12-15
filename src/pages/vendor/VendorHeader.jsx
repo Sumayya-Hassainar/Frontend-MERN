@@ -13,7 +13,7 @@ export default function VendorHeader({ setRole }) {
   };
 
   return (
-    <header className="bg-indigo-600 text-white p-4 flex justify-between items-center">
+    <header className="bg-indigo-300 text-white p-4 flex justify-between items-center">
       <h1 className="font-bold text-lg">Vendor Panel</h1>
       <nav className="space-x-4 text-sm">
         <Link to="/vendor/dashboard" className="hover:underline">

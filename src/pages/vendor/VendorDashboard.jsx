@@ -1,4 +1,4 @@
-// src/pages/vendor/VendorDashboard.jsx
+/* ========================== VendorDashboard.jsx ========================== */
 import React, { useEffect, useState } from "react";
 import {
   fetchCategories,
@@ -16,6 +16,8 @@ export default function VendorDashboard() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [savingProduct, setSavingProduct] = useState(false);
+  const [error, setError] = useState("");
+
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -49,6 +51,7 @@ export default function VendorDashboard() {
   /* ================= FORM HANDLERS ================= */
   const resetForm = () => {
     setEditingProduct(null);
+    setError("");
     setForm({
       name: "",
       description: "",
@@ -68,8 +71,40 @@ export default function VendorDashboard() {
     else setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  /* ================= VALIDATION ================= */
+  const validateForm = () => {
+    if (!form.name.trim()) return "Product name is required";
+    if (!form.description.trim()) return "Description is required";
+    if (!form.category) return "Category is required";
+
+    const priceNum = parseFloat(form.price);
+    if (isNaN(priceNum) || priceNum < 0) return "Price must be a positive number";
+
+    if (form.discountPrice) {
+      const discountNum = parseFloat(form.discountPrice);
+      if (isNaN(discountNum) || discountNum < 0) return "Discount price must be positive";
+      if (discountNum > priceNum) return "Discount price cannot exceed original price";
+    }
+
+    const stockNum = parseInt(form.stock);
+    if (isNaN(stockNum) || stockNum < 0) return "Stock must be a non-negative integer";
+
+    if (!editingProduct && (!form.images || form.images.length === 0))
+      return "At least one product image is required";
+
+    return null;
+  };
+
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setSavingProduct(true);
     try {
       const fd = new FormData();
@@ -86,7 +121,7 @@ export default function VendorDashboard() {
       loadProducts();
     } catch (err) {
       console.error(err);
-      alert(err.message || "Failed to save product");
+      setError(err.message || "Failed to save product");
     } finally {
       setSavingProduct(false);
     }
@@ -104,6 +139,7 @@ export default function VendorDashboard() {
       isActive: p.isActive ?? true,
       images: [],
     });
+    setError("");
     setFormOpen(true);
   };
 
@@ -210,6 +246,13 @@ export default function VendorDashboard() {
             <h2 className="text-xl font-semibold mb-4">
               {editingProduct ? "Edit Product" : "Add Product"}
             </h2>
+
+            {error && (
+              <div className="mb-3 text-sm text-red-600 bg-red-50 border border-red-100 p-2 rounded">
+                {error}
+              </div>
+            )}
+
             <form onSubmit={handleFormSubmit} className="space-y-3">
               <input
                 name="name"

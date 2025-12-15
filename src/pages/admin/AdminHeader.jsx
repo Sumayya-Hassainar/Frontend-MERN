@@ -16,7 +16,7 @@ export default function AdminHeader({
   };
 
   return (
-    <header className="bg-gray-800 text-white sticky top-0 z-40">
+    <header className="bg-yellow-400 text-white sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
         {/* Logo */}
         <Link to="/admin/pannel" className="font-bold text-xl">

@@ -16,6 +16,15 @@ export default function VendorOrders() {
   const [newStatus, setNewStatus] = useState("");
   const [creating, setCreating] = useState(false);
 
+  // ===================== PREDEFINED STATUSES =====================
+  const predefinedStatuses = [
+    "Pending",
+    "Processing",
+    "Shipped",
+    "Delivered",
+    "Cancelled",
+  ];
+
   /* ================= LOAD ORDERS & STATUSES ================= */
   useEffect(() => {
     const loadOrders = async () => {
@@ -48,20 +57,20 @@ export default function VendorOrders() {
 
   /* ================= CREATE STATUS ================= */
   const handleCreate = async () => {
-    if (!selectedOrderId || !newStatus.trim()) {
-      return alert("Select order and enter status");
+    if (!selectedOrderId || !newStatus) {
+      return alert("Select order and status");
     }
 
     const exists = (statuses[selectedOrderId] || []).some(
-      (s) => s.status.toLowerCase() === newStatus.trim().toLowerCase()
+      (s) => s.status.toLowerCase() === newStatus.toLowerCase()
     );
-    if (exists) return alert("Status already exists");
+    if (exists) return alert("Status already exists for this order");
 
     try {
       setCreating(true);
       const res = await createVendorOrderStatus({
         orderId: selectedOrderId,
-        status: newStatus.trim(),
+        status: newStatus,
       });
 
       setStatuses((prev) => ({
@@ -134,12 +143,27 @@ export default function VendorOrders() {
           ))}
         </select>
 
-        <input
+        <select
           value={newStatus}
           onChange={(e) => setNewStatus(e.target.value)}
-          placeholder="New status"
-          className="border px-3 py-2 flex-1"
-        />
+          className="border px-3 py-2 "
+        >
+          <option value="">Select Status</option>
+          {predefinedStatuses.map((status) => (
+            <option
+              key={status}
+              value={status}
+              disabled={
+                selectedOrderId &&
+                (statuses[selectedOrderId] || []).some(
+                  (s) => s.status.toLowerCase() === status.toLowerCase()
+                )
+              }
+            >
+              {status}
+            </option>
+          ))}
+        </select>
 
         <button
           onClick={handleCreate}

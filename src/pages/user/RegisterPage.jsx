@@ -9,7 +9,7 @@ export default function RegisterPage() {
     name: "",
     email: "",
     password: "",
-    role: "customer", // default role
+    role: "customer",
   });
   const [error, setError] = useState("");
 
@@ -20,21 +20,47 @@ export default function RegisterPage() {
     }));
   };
 
+  const validateForm = () => {
+    if (!form.name.trim()) {
+      return "Name is required";
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) {
+      return "Invalid email address";
+    }
+
+    if (form.password.length < 6) {
+      return "Password must be at least 6 characters";
+    }
+
+    if (!form.role) {
+      return "Please select a role";
+    }
+
+    return null; // valid
+  };
+
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError("");
+    e.preventDefault();
+    setError("");
 
-  try {
-    console.log("📝 Submitting register form:", form);
-    const data = await registerUser(form);
-    console.log("✅ Registered:", data);
-    navigate("/login");
-  } catch (err) {
-    console.error("❌ Register error:", err);
-    setError(err.message || "Registration failed");
-  }
-};
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
 
+    try {
+      console.log("📝 Submitting register form:", form);
+      const data = await registerUser(form);
+      console.log("✅ Registered:", data);
+      navigate("/login");
+    } catch (err) {
+      console.error("❌ Register error:", err);
+      setError(err.message || "Registration failed");
+    }
+  };
 
   return (
     <div className="max-w-md mx-auto px-4 py-10">

@@ -62,8 +62,8 @@ export default function AdminDashboard() {
                 <td className="border p-2">{v.description}</td>
                 <td className="border p-2">{v.address}</td>
                 <td className="border p-2">
-                  <button onClick={() => handleVendorEdit(v)} className="text-blue-600 mr-3">Edit</button>
-                  <button onClick={() => handleVendorDelete(v._id)} className="text-red-600">Delete</button>
+                  <button onClick={() => handleVendorEdit(v)} className=" text-blue-600 mr-3">Edit</button>
+                  <button onClick={() => handleVendorDelete(v._id)} className=" text-red-600">Delete</button>
                 </td>
               </tr>
             ))}
