@@ -8,12 +8,30 @@ function getAuthHeaders() {
     "Content-Type": "application/json",
   };
 }
+
+/* ================= HELPER: NORMALIZE ================= */
+async function normalize(res) {
+  const json = await res.json();
+  if ("data" in json) return json;
+  if (Array.isArray(json)) return { data: json };
+  if (json.orders) return { data: json.orders };
+  return { data: json };
+}
+
+
 /* ================= VENDOR MANAGEMENT ================= */
 export async function fetchVendors() {
-  const res = await fetch(`${API_BASE}/vendors`, { headers: getAuthHeaders() });
-  if (!res.ok) throw new Error("Failed to fetch vendors");
-  return res.json();
+  const res = await fetch(`${API_BASE}/admin/vendors`, {
+    headers: getAuthHeaders(),
+  });
+
+  console.log("RAW VENDOR API RESPONSE:", res.status);
+
+  const data = await res.json();
+  console.log("VENDOR API JSON:", data);
+  return data;
 }
+
 
 export async function fetchPendingVendors() {
   const res = await fetch(`${API_BASE}/admin/vendors/pending`, { headers: getAuthHeaders() });
@@ -63,10 +81,11 @@ export async function rejectVendorRequest(id) {
 }
 
 /* ================= ORDER MANAGEMENT ================= */
+/* ================= ORDER MANAGEMENT ================= */
 export async function fetchAllOrders() {
   const res = await fetch(`${API_BASE}/orders`, { headers: getAuthHeaders() });
   if (!res.ok) throw new Error("Failed to fetch orders");
-  return res.json();
+  return normalize(res);
 }
 
 export async function sendOrderToVendor(orderId, vendorId) {
@@ -76,10 +95,10 @@ export async function sendOrderToVendor(orderId, vendorId) {
     body: JSON.stringify({ vendorId }),
   });
   if (!res.ok) throw new Error("Failed to assign order");
-  return res.json();
+  return normalize(res);
 }
 
-// ✅ Admin updates order
+// Admin updates order status
 export async function adminUpdateOrderStatus(orderId, status) {
   const res = await fetch(`${API_BASE}/orders/${orderId}/status`, {
     method: "PUT",
@@ -87,18 +106,18 @@ export async function adminUpdateOrderStatus(orderId, status) {
     body: JSON.stringify({ status }),
   });
   if (!res.ok) throw new Error("Failed to update order status");
-  return res.json();
+  return normalize(res);
 }
 
-// ✅ Vendor updates order
+// Vendor updates order status
 export async function vendorUpdateOrderStatus(orderId, status) {
-  const res = await fetch(`${API_BASE}/order-statuses/vendor/${orderId}/status`, {
+  const res = await fetch(`${API_BASE}/order-status/vendor/${orderId}/status`, {
     method: "PATCH",
     headers: getAuthHeaders(),
     body: JSON.stringify({ status }),
   });
   if (!res.ok) throw new Error("Failed to update vendor order status");
-  return res.json();
+  return normalize(res);
 }
 
 export async function deleteOrder(orderId) {
@@ -107,34 +126,74 @@ export async function deleteOrder(orderId) {
     headers: getAuthHeaders(),
   });
   if (!res.ok) throw new Error("Failed to delete order");
-  return res.json();
+  return normalize(res);
 }
 
 /* ================= ORDER STATUS MASTER ================= */
-export async function fetchOrderStatuses() {
-  const res = await fetch(`${API_BASE}/order-statuses`, { headers: getAuthHeaders() });
-  const data = await res.json().catch(() => ({}));
-  console.log("Status:", res.status, "OK?", res.ok, "Data:", data);
-
-  if (!res.ok) throw new Error(data?.message || "Failed to fetch order statuses");
-  return data;
+// Get statuses for a specific order
+export async function getStatuses(orderId) {
+  const res = await fetch(`${API_BASE}/order-statuses/order/${orderId}`, {
+    headers: getAuthHeaders(),
+  });
+  return normalize(res);
 }
 
-export async function updateOrderStatusMaster(id, payload) {
-  const res = await fetch(`${API_BASE}/order-statuses/${id}`, {
+// Admin updates main order status
+export async function updateOrderStatusAdmin(statusId, status) {
+  const res = await fetch(`${API_BASE}/order-statuses/${statusId}`, {
     method: "PUT",
     headers: getAuthHeaders(),
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ status }),
   });
-  if (!res.ok) throw new Error("Failed to update order status master");
-  return res.json();
+  return normalize(res);
 }
 
-export async function deleteOrderStatus(id) {
-  const res = await fetch(`${API_BASE}/order-statuses/${id}`, {
+// Delete order status (Vendor only)
+export async function deleteOrderStatus(statusId) {
+  const res = await fetch(`${API_BASE}/order-statuses/${statusId}`, {
     method: "DELETE",
     headers: getAuthHeaders(),
   });
-  if (!res.ok) throw new Error("Failed to delete order status");
-  return res.json();
+  return normalize(res);
+}
+/* ================= USER MANAGEMENT ================= */
+
+// Admin: Get all users
+export async function fetchUsers() {
+  const res = await fetch(`${API_BASE}/admin/users`, {
+    headers: getAuthHeaders(),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || `Request failed (${res.status})`);
+  }
+
+  return { data };
+}
+
+
+// Admin: Block / Unblock user
+export async function toggleUserStatus(userId, isBlocked) {
+  const res = await fetch(`${API_BASE}/admin/users/${userId}/status`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ isBlocked }),
+  });
+
+  if (!res.ok) throw new Error("Failed to update user status");
+  return normalize(res);
+}
+
+// Admin: Change user role
+export async function updateUserRole(userId, role) {
+  const res = await fetch(`${API_BASE}/admin/users/${userId}/role`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ role }),
+  });
+
+  if (!res.ok) throw new Error("Failed to update user role");
+  return normalize(res);
 }

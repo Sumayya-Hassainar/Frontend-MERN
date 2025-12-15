@@ -1,238 +1,153 @@
-// src/pages/admin/AdminOrders.jsx
 import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   fetchAllOrders,
-  fetchVendors,
-  fetchOrderStatuses,
-  sendOrderToVendor,
-  adminUpdateOrderStatus,
-  updateOrderStatusMaster,
+  getStatuses,
+  updateOrderStatusAdmin,
   deleteOrderStatus,
-  deleteOrder,
 } from "../../api/adminapi";
 
-export default function AdminOrders() {
-  const [orders, setOrders] = useState([]);
-  const [vendors, setVendors] = useState([]);
+export default function AdminOrderHandle() {
+  const { id } = useParams(); // Order ID
+  const navigate = useNavigate();
+
+  const [order, setOrder] = useState(null);
   const [statuses, setStatuses] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  /* ================= LOAD DATA ================= */
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError("");
-
-      const [ordersData, vendorsData, statusesData] = await Promise.all([
-        fetchAllOrders(),
-        fetchVendors(),
-        fetchOrderStatuses(),
-      ]);
-
-      setOrders(Array.isArray(ordersData) ? ordersData : ordersData?.orders || []);
-      setVendors(Array.isArray(vendorsData) ? vendorsData : vendorsData?.vendors || []);
-      setStatuses(Array.isArray(statusesData) ? statusesData : []);
-    } catch (err) {
-      console.error("AdminOrders Load Error:", err);
-      setError(err.message || "Failed to load data");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [status, setStatus] = useState("");
 
   useEffect(() => {
-    loadData();
+    const init = async () => {
+      await loadOrder();
+    };
+    init();
   }, []);
 
-  /* ================= ACTIONS ================= */
-  const handleAssignVendor = async (orderId, vendorId) => {
-    if (!vendorId) return alert("Select a vendor");
+  // Load order and vendor statuses
+  async function loadOrder() {
     try {
-      await sendOrderToVendor(orderId, vendorId);
-      setOrders((prev) =>
-        prev.map((o) =>
-          o._id === orderId ? { ...o, vendor: vendors.find((v) => v._id === vendorId) } : o
-        )
-      );
-    } catch (err) {
-      alert(err.message || "Vendor assignment failed");
-    }
-  };
+      const ordersResp = await fetchAllOrders();
+      const orders = ordersResp.data;
+      const found = orders.find((o) => o._id === id);
 
-  const handleOrderDelete = async (orderId) => {
-    if (!window.confirm("Delete order?")) return;
+      if (!found) return navigate("/admin/orders");
+
+      setOrder(found);
+      setStatus(found.status);
+
+      await loadOrderStatuses(found._id);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to load order");
+    }
+  }
+
+  async function loadOrderStatuses(orderId) {
     try {
-      await deleteOrder(orderId);
-      setOrders((prev) => prev.filter((o) => o._id !== orderId));
+      const resp = await getStatuses(orderId);
+      setStatuses(Array.isArray(resp.statuses) ? resp.statuses : []);
     } catch (err) {
-      alert(err.message || "Order delete failed");
+      console.error(err);
+      setStatuses([]);
+      alert("Failed to load order statuses");
     }
-  };
+  }
 
-  const handleStatusChange = async (orderId, newStatus) => {
-    if (!newStatus) return;
+  // Admin updates main order status
+  async function handleUpdateOrderStatus() {
+    if (!status) return alert("Select a status");
+
     try {
-      await adminUpdateOrderStatus(orderId, newStatus);
-      setOrders((prev) =>
-        prev.map((o) => (o._id === orderId ? { ...o, orderStatus: newStatus } : o))
-      );
+      await updateOrderStatusAdmin(order._id, status);
+      alert("Order status updated by admin");
+      await loadOrder();
     } catch (err) {
-      alert(err.message || "Status update failed");
+      console.error(err);
+      alert("Failed to update order status");
     }
-  };
+  }
 
-  const handleMasterStatusUpdate = async (id, newName) => {
-    if (!newName) return;
+  // Admin deletes a specific status
+  async function handleDeleteStatus(statusId) {
+    if (!window.confirm("Are you sure you want to delete this status?")) return;
+
     try {
-      await updateOrderStatusMaster(id, { name: newName });
-      setStatuses((prev) =>
-        prev.map((s) => (s._id === id ? { ...s, name: newName } : s))
-      );
+      await deleteOrderStatus(statusId);
+      alert("Status deleted successfully");
+      await loadOrderStatuses(order._id); // refresh timeline
     } catch (err) {
-      alert(err.message || "Failed to update master status");
+      console.error(err);
+      alert("Failed to delete status");
     }
-  };
+  }
 
-  const handleMasterStatusDelete = async (id) => {
-    if (!window.confirm("Delete master status?")) return;
-    try {
-      await deleteOrderStatus(id);
-      setStatuses((prev) => prev.filter((s) => s._id !== id));
-    } catch (err) {
-      alert(err.message || "Failed to delete master status");
-    }
-  };
-
-  /* ================= UI ================= */
-  if (loading) return <div className="p-6">Loading orders...</div>;
-  if (error) return <div className="p-6 text-red-600">{error}</div>;
+  if (!order) return <div className="p-6">Loading...</div>;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-      <h1 className="text-2xl font-bold">Admin Order Management</h1>
+    <div className="p-6">
+      <h2 className="text-xl font-bold mb-4">Handle Order</h2>
 
-      {/* ================= ORDERS TABLE ================= */}
-      <table className="w-full border text-sm">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="border p-2">Order ID</th>
-            <th className="border p-2">Customer</th>
-            <th className="border p-2">Total</th>
-            <th className="border p-2">Current Status</th>
-            <th className="border p-2">Assign Vendor</th>
-            <th className="border p-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {orders.length === 0 && (
-            <tr>
-              <td colSpan="6" className="text-center p-6 text-gray-500">
-                No orders found
-              </td>
-            </tr>
-          )}
-          {orders.map((order) => (
-            <tr key={order._id}>
-              <td className="border p-2">{order._id}</td>
-              <td className="border p-2">{order.customer?.name || "Guest"}</td>
-              <td className="border p-2">₹{order.totalAmount}</td>
+      <p>
+        <strong>Order ID:</strong> {order._id}
+      </p>
+      <p>
+        <strong>Customer:</strong> {order.customer?.name || "Guest"}
+      </p>
+      <p>
+        <strong>Vendor:</strong> {order.vendor?.shopName || "Not Assigned"}
+      </p>
 
-              {/* Order Status */}
-              <td className="border p-2">
-                <select
-                  value={order.orderStatus || ""}
-                  onChange={(e) => handleStatusChange(order._id, e.target.value)}
-                  className="border p-1 rounded w-full"
-                >
-                  <option value="">Select Status</option>
-                  {statuses.map((s) => (
-                    <option key={s._id} value={s.name}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </td>
-
-              {/* Vendor Assignment */}
-              <td className="border p-2">
-                <select
-                  value={order.vendor?._id || ""}
-                  onChange={(e) => handleAssignVendor(order._id, e.target.value)}
-                  className="border p-1 rounded w-full"
-                >
-                  <option value="">Select Vendor</option>
-                  {vendors.map((v) => (
-                    <option key={v._id} value={v._id}>
-                      {v.shopName}
-                    </option>
-                  ))}
-                </select>
-              </td>
-
-              {/* Actions */}
-              <td className="border p-2 text-center">
+      <div className="mt-4">
+        <label className="block mb-2 font-semibold">Vendor Status Timeline</label>
+        <div className="border p-3 rounded max-h-64 overflow-y-auto">
+          {statuses.length ? (
+            statuses.map((s) => (
+              <div
+                key={s._id}
+                className="mb-2 p-2 bg-gray-100 rounded flex justify-between items-start"
+              >
+                <div>
+                  <strong>{s.status}</strong> — by {s.createdBy?.name || "Vendor"}{" "}
+                  on {new Date(s.createdAt).toLocaleString()}
+                  <p className="text-sm text-gray-700">{s.description}</p>
+                </div>
                 <button
-                  onClick={() => handleOrderDelete(order._id)}
-                  className="text-red-600 hover:underline"
+                  onClick={() => handleDeleteStatus(s._id)}
+                  className="ml-4 bg-red-600 text-white px-2 py-1 rounded text-sm"
                 >
                   Delete
                 </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {/* ================= MASTER STATUSES TABLE ================= */}
-      <h2 className="text-xl font-semibold mt-8">Order Status Master</h2>
-      <table className="w-full border text-sm mt-2">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="border p-2">Status Name</th>
-            <th className="border p-2">Actions</th>
-             <th className="border p-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {statuses.length === 0 && (
-            <tr>
-              <td colSpan="2" className="text-center p-4 text-gray-500">
-                No master statuses found
-              </td>
-            </tr>
+              </div>
+            ))
+          ) : (
+            <p>No statuses yet</p>
           )}
-          {statuses.map((status) => (
-            <tr key={status._id}>
-              <td className="border p-3">
-                <input
-                  type="text"
-                  defaultValue={status.name}
-                  onBlur={(e) => handleMasterStatusUpdate(status._id, e.target.value)}
-                  className="border p-1 rounded w-full"
-                />
-              </td>
-              <td className="border p-2 text-center">
-                <button
-                  onClick={() => handleMasterStatusUpdate(status._id)}
-                  className="text-blue-600 hover:underline"
-                >
-                  Edit
-                </button>
-              </td>
+        </div>
+      </div>
 
-              <td className="border p-2 text-center">
-                <button
-                  onClick={() => handleMasterStatusDelete(status._id)}
-                  className="text-red-600 hover:underline"
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="mt-4">
+        <label className="block mb-2 font-semibold">Admin: Update Main Order Status</label>
+        <div className="flex items-center gap-3">
+          <select
+            className="border p-2 rounded"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option value="">Select</option>
+            {["Processing", "Shipped", "Delivered", "Cancelled"].map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+
+          <button
+            onClick={handleUpdateOrderStatus}
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+          >
+            Save
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

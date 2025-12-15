@@ -1,231 +1,241 @@
-/* ================= BASE URL ================= */
-
 const API_BASE =
-  import.meta.env.VITE_API_URL ||
-  "https://backend-mern-ex49.onrender.com/api";
+  import.meta.env.VITE_API_URL || "https://backend-mern-ex49.onrender.com/api";
 
 /* ================= AUTH HEADER ================= */
-
-function getAuthHeaders(extra = {}) {
+export function getAuthHeaders(extra = {}) {
   const token = localStorage.getItem("token");
-
   return {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    "Content-Type": "application/json",
     ...extra,
   };
 }
 
-/* ================= GLOBAL RESPONSE HANDLER ================= */
+export function requireToken() {
+  const token = localStorage.getItem("token"); // assign to variable
+  console.log("TOKEN:", token);
+  if (!token) throw new Error("Authentication required. Please login.");
+  return token;
+}
 
+
+/* ================= GLOBAL RESPONSE HANDLER ================= */
 async function handleResponse(res) {
   let data = {};
-
   try {
     data = await res.json();
-  } catch {
-    data = {};
-  }
-
+  } catch (e) {}
   if (!res.ok) {
-    throw new Error(data?.message || `Request failed with status ${res.status}`);
+    const msg = data?.message || `Request failed with status ${res.status}`;
+    throw new Error(msg);
   }
-
   return data;
 }
 
 /* ================= AUTH ================= */
-
-// ✅ REGISTER
 export async function registerUser(payload) {
-  const res = await fetch(`${API_BASE}/users/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  return handleResponse(res);
+  return handleResponse(
+    await fetch(`${API_BASE}/users/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+  );
 }
 
-// ✅ LOGIN
 export async function loginUser(payload) {
-  const res = await fetch(`${API_BASE}/users/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  return handleResponse(res);
+  return handleResponse(
+    await fetch(`${API_BASE}/users/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+  );
 }
 
-// ✅ OTP VERIFY
 export async function verifyOtp(payload) {
-  const res = await fetch(`${API_BASE}/users/verify-otp`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  return handleResponse(res);
+  return handleResponse(
+    await fetch(`${API_BASE}/users/verify-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+  );
 }
 
-// ✅ FORGOT PASSWORD
 export async function forgotPassword(payload) {
-  const res = await fetch(`${API_BASE}/users/forgot-password`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  return handleResponse(res);
+  return handleResponse(
+    await fetch(`${API_BASE}/users/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+  );
 }
 
-// ✅ RESET PASSWORD
 export async function resetPassword(payload) {
-  const res = await fetch(`${API_BASE}/users/reset-password`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  return handleResponse(res);
+  return handleResponse(
+    await fetch(`${API_BASE}/users/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+  );
 }
 
-// ✅ GET PROFILE
 export async function fetchMyProfile() {
-  const res = await fetch(`${API_BASE}/users/profile`, {
-    headers: getAuthHeaders(),
-  });
-
-  return handleResponse(res);
+  requireToken();
+  return handleResponse(
+    await fetch(`${API_BASE}/users/profile`, { headers: getAuthHeaders() })
+  );
 }
 
 /* ================= PRODUCTS ================= */
-
 export async function fetchProducts() {
-  const res = await fetch(`${API_BASE}/products`);
-  return handleResponse(res);
+  return handleResponse(await fetch(`${API_BASE}/products`));
 }
 
 export async function fetchProductById(id) {
   if (!id) throw new Error("Product ID is required");
-
-  const res = await fetch(`${API_BASE}/products/${id}`);
-  return handleResponse(res);
+  return handleResponse(await fetch(`${API_BASE}/products/${id}`));
 }
 
-/* ================= ORDERS ================= */
-
-// ✅ ADMIN – GET ALL ORDERS
-export async function fetchOrders() {
-  const res = await fetch(`${API_BASE}/orders`, {
-    headers: getAuthHeaders(),
-  });
-
-  return handleResponse(res);
+/* ================= CUSTOMER ORDERS ================= */
+export async function fetchCustomerOrders() {
+  requireToken();
+  return handleResponse(
+    await fetch(`${API_BASE}/orders/myorders`, { headers: getAuthHeaders() })
+  );
 }
 
-// ✅ CUSTOMER – GET MY ORDERS
-export async function fetchMyOrders() {
-  const res = await fetch(`${API_BASE}/orders/myorders`, {
-    headers: getAuthHeaders(),
-  });
-
-  return handleResponse(res);
-}
-
-// ✅ CREATE ORDER
-export async function createOrder(orderData) {
-  const res = await fetch(`${API_BASE}/orders`, {
-    method: "POST",
-    headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(orderData),
-  });
-
-  return handleResponse(res);
-}
-
-// ✅ GET SINGLE ORDER BY ID ✅✅ (THIS FIXES YOUR ERROR)
 export async function fetchOrderById(orderId) {
+  requireToken();
   if (!orderId) throw new Error("Order ID is required");
 
-  const res = await fetch(`${API_BASE}/orders/${orderId}`, {
-    headers: getAuthHeaders(),
-  });
+  const res = await fetch(`${API_BASE}/orders/${orderId}`, { headers: getAuthHeaders() });
+  const data = await res.json();
 
-  return handleResponse(res);
+  if (!res.ok) throw new Error(data.message || "Failed to fetch order");
+
+  return data.order;   // 👈 fixed
 }
 
-/* ================= STRIPE ================= */
 
-export async function createStripeCheckoutSession(products) {
+/* ================= CREATE ORDER ================= */
+export async function createOrder(orderData) {
+  requireToken();
+  const res = await fetch(`${API_BASE}/orders`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(orderData),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to create order");
+  return data;
+}
+/* ================= PAYMENT ================= */
+export async function createPayment(paymentData) {
+  requireToken();
+  if (!paymentData?.orderId) throw new Error("orderId is required");
+  if (paymentData.amount == null || Number.isNaN(Number(paymentData.amount))) throw new Error("amount is required");
+
+  let method = (paymentData.paymentMethod || "").toLowerCase();
+  if (method === "online" || method === "card/upi") method = "card";
+  if (method !== "card" && method !== "cod") method = "card";
+
+  const res = await fetch(`${API_BASE}/payments`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      orderId: paymentData.orderId,
+      amount: Number(paymentData.amount),
+      paymentMethod: method,
+      status: paymentData.status || "Success",
+      transactionId: paymentData.transactionId,
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Payment failed");
+  return data;
+}
+
+/* ================= ORDER STATUS (FIXED) ================= */
+
+// Get timeline for an order (vendor / admin / customer)
+export async function fetchOrderStatusesByOrder(orderId) {
+  requireToken();
+  if (!orderId) throw new Error("Order ID is required");
+
   const res = await fetch(
-    `${API_BASE}/payments/create-checkout-session`,
-    {
-      method: "POST",
-      headers: getAuthHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ products }),
-    }
+    `${API_BASE}/order-statuses/order/${orderId}`, // ✅ CORRECT ROUTE
+    { headers: getAuthHeaders() }
   );
 
-  return handleResponse(res);
+  const data = await handleResponse(res);
+
+  // backend returns { success, statuses }
+  return Array.isArray(data.statuses) ? data.statuses : [];
+}
+
+// Customer tracking (if you KEEP /track route)
+export async function fetchCustomerOrderTracking(orderId) {
+  requireToken();
+  if (!orderId) throw new Error("Order ID is required");
+
+  const res = await fetch(
+    `${API_BASE}/order-statuses/track/${orderId}`,
+    { headers: getAuthHeaders() }
+  );
+
+  const data = await handleResponse(res);
+
+  return {
+    order: data.order,
+    timeline: Array.isArray(data.timeline) ? data.timeline : [],
+  };
+}
+
+
+/* ================= STRIPE ================= */
+export async function createStripeCheckoutSession(products) {
+  requireToken();
+  return handleResponse(
+    await fetch(`${API_BASE}/payments/create-checkout-session`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ products }),
+    })
+  );
 }
 
 export async function fetchStripeSessionStatus(sessionId) {
+  requireToken();
   if (!sessionId) throw new Error("Session ID is required");
-
-  const res = await fetch(
-    `${API_BASE}/payments/session-status?session_id=${sessionId}`,
-    {
+  return handleResponse(
+    await fetch(`${API_BASE}/payments/session-status?session_id=${sessionId}`, {
       headers: getAuthHeaders(),
-    }
+    })
   );
-
-  return handleResponse(res);
 }
 
-/* ================= PAYMENT ================= */
-
-export async function createPayment(payload) {
-  const res = await fetch(`${API_BASE}/payments`, {
-    method: "POST",
-    headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(payload),
-  });
-
-  return handleResponse(res);
-}
-
-/* ================= ORDER STATUS ================= */
-
-// ✅ CUSTOMER – GET ALL MY ORDER STATUSES
-export async function fetchMyOrderStatuses() {
-  const res = await fetch(`${API_BASE}/order-statuses/my`, {
-    headers: getAuthHeaders(),
-  });
-
-  return handleResponse(res);
-}
-
-// ✅ GET STATUS BY ORDER ID ✅✅ (BUG FIXED)
-export async function fetchOrderStatusByOrderId(orderId) {
-  if (!orderId) throw new Error("Order ID is required");
-
-  const res = await fetch(
-    `${API_BASE}/order-statuses/order/${orderId}`,
-    {
-      headers: getAuthHeaders(),
-    }
-  );
-
-  return handleResponse(res);
-}
-/* ================= CUSTOMER ORDERS ================= */
-
-// ✅ CUSTOMER – GET MY ORDERS (USED IN HELPDESK)
-export async function fetchCustomerOrders() {
-  const res = await fetch(`${API_BASE}/orders/my-orders`, {
-    headers: getAuthHeaders(),
-  });
-
-  return handleResponse(res);
-}
+/* ================= DEFAULT EXPORT ================= */
+export default {
+  getAuthHeaders,
+  requireToken,
+  registerUser,
+  loginUser,
+  verifyOtp,
+  forgotPassword,
+  resetPassword,
+  fetchMyProfile,
+  fetchProducts,
+  fetchProductById,
+  fetchCustomerOrders,
+  fetchOrderById,
+  createOrder,
+  createPayment,
+  fetchOrderStatusesByOrder,
+  fetchCustomerOrderTracking,
+  createStripeCheckoutSession,
+  fetchStripeSessionStatus,
+};

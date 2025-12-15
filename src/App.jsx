@@ -9,8 +9,9 @@ import Header from "./components/Header.jsx";
 import Footer from "./components/Footer.jsx";
 import ProtectedRoute from "./components/ProtectedRoutes.jsx";
 
-// ✅ ADMIN HEADER
+// ✅ ADMIN + VENDOR HEADERS
 import AdminHeader from "./pages/admin/AdminHeader.jsx";
+import VendorHeader from "./pages/vendor/VendorHeader.jsx";
 
 // ================= COMMON PAGES =================
 import Home from "./pages/common/Home.jsx";
@@ -31,25 +32,26 @@ import LoginPage from "./pages/user/LoginPage.jsx";
 import RegisterPage from "./pages/user/RegisterPage.jsx";
 
 // ================= REVIEWS =================
-import ReviewList from "./components/ReviewList.jsx";
-import ReviewForm from "./components/ReviewForm.jsx";
+import ReviewList from "./components/reviewsection/ReviewForm.jsx";
 
 // ================= ADMIN PAGES =================
 import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
 import AdminPanel from "./pages/admin/AdminPanel.jsx";
-import AdminOrders from "./pages/admin/AdminOrderHandle.jsx"; // ✅ SEPARATE ORDER PAGE
+import AdminOrders from "./pages/admin/AdminOrder.jsx";
+import AdminOrderHandle from "./pages/admin/AdminOrderHandle.jsx"
+import AdminReviewList from "./pages/admin/AdminReviewList.jsx";
 
 // ================= VENDOR PAGES =================
 import VendorLandingPage from "./pages/vendor/VendorLandingPage.jsx";
 import VendorRegisterPage from "./pages/vendor/VendorRegisterPage.jsx";
 import VendorLoginPage from "./pages/vendor/VendorLoginPage.jsx";
 import VendorDashboard from "./pages/vendor/VendorDashboard.jsx";
+import VendorOrders from "./pages/vendor/VendorOrders.jsx"
 
 // ================= API =================
 import { fetchMyNotifications, markNotificationAsRead } from "./api/accountapi.jsx";
 import ResetPassword from "./utils/ResetPassword.jsx";
-import VendorHeader from "./pages/vendor/VendorHeader.jsx";
-import VendorOrders from "./pages/vendor/VendorOrders.jsx";
+import UserManage from "./pages/admin/UserManage.jsx";
 
 // ================= REVIEW WRAPPER =================
 const ProductReviews = ({ role }) => {
@@ -66,7 +68,6 @@ function App() {
   const [role, setRole] = useState("guest");
   const [theme, setTheme] = useState("light");
   const [query, setQuery] = useState("");
-
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -118,7 +119,7 @@ function App() {
     <Provider store={store}>
       <div className="flex flex-col min-h-screen bg-white text-black">
 
-        {/* ✅ ROLE BASED HEADER */}
+        {/* ================= ROLE BASED HEADER ================= */}
         {role === "admin" ? (
           <AdminHeader setRole={setRole} />
         ) : role === "vendor" ? (
@@ -136,7 +137,6 @@ function App() {
             setQuery={setQuery}
           />
         )}
-
 
         <main className="flex-1">
           <Routes>
@@ -166,30 +166,30 @@ function App() {
             {/* ================= ADMIN ================= */}
             <Route path="/admin" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/orders" element={<ProtectedRoute allowedRoles={["admin"]}><AdminOrders /></ProtectedRoute>} />
+            <Route path="/admin/orders/:id/handle" element={<ProtectedRoute allowedRoles={["admin"]}><AdminOrderHandle /></ProtectedRoute>} />
             <Route path="/admin/panel" element={<ProtectedRoute allowedRoles={["admin"]}><AdminPanel /></ProtectedRoute>} />
+            <Route path="/admin/review" element={<ProtectedRoute allowedRoles={["admin"]}><AdminReviewList /></ProtectedRoute>} />
+            <Route path="/admin/users" element={<ProtectedRoute allowedRoles={["admin"]}><UserManage/></ProtectedRoute>} />
+
 
             {/* ================= VENDOR ================= */}
             <Route path="/vendor/become-seller" element={<VendorLandingPage />} />
             <Route path="/vendor/register" element={<VendorRegisterPage />} />
             <Route path="/vendor/login" element={<VendorLoginPage setRole={setRole} />} />
             <Route path="/vendor/dashboard" element={<ProtectedRoute allowedRoles={["vendor"]}><VendorDashboard /></ProtectedRoute>} />
-            <Route
-              path="/vendor/orders"
-              element={
-                <ProtectedRoute allowedRoles={["vendor"]}>
-                  <VendorOrders />
-                </ProtectedRoute>
-              }
-            />
+             <Route path="/vendor/orders" element={<ProtectedRoute allowedRoles={["vendor"]}><VendorOrders /></ProtectedRoute>} />
+
 
             {/* ================= 404 ================= */}
-            <Route path="*" element={
-              <div className="p-10 text-center">
-                <h1 className="text-3xl font-bold">404</h1>
-                <p>Page not found</p>
-              </div>
-            } />
-
+            <Route
+              path="*"
+              element={
+                <div className="p-10 text-center">
+                  <h1 className="text-3xl font-bold">404</h1>
+                  <p>Page not found</p>
+                </div>
+              }
+            />
           </Routes>
         </main>
 

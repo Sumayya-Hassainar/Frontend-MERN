@@ -1,8 +1,11 @@
-
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-export default function AdminHeader({ notifications = [], unreadCount = 0, onMarkAsRead = () => {} }) {
+export default function AdminHeader({
+  notifications = [],
+  unreadCount = 0,
+  onMarkAsRead = () => {},
+}) {
   const navigate = useNavigate();
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
 
@@ -25,11 +28,17 @@ export default function AdminHeader({ notifications = [], unreadCount = 0, onMar
           <Link to="/admin" className="hover:underline">
             Dashboard
           </Link>
+
+          <Link to="/admin/users" className="hover:underline">
+            Users
+          </Link>
+
           <Link to="/admin/orders" className="hover:underline">
             Orders
           </Link>
-          <Link to="/admin/users" className="hover:underline">
-            Users
+
+          <Link to="/admin/review" className="hover:underline">
+            Review
           </Link>
 
           {/* Notifications */}
@@ -42,9 +51,13 @@ export default function AdminHeader({ notifications = [], unreadCount = 0, onMar
                 </span>
               )}
             </button>
+
             {showNotifDropdown && (
               <div className="absolute right-0 mt-2 w-72 bg-white text-black rounded shadow-lg">
-                {notifications.length === 0 && <p className="p-3 text-sm">No notifications</p>}
+                {notifications.length === 0 && (
+                  <p className="p-3 text-sm">No notifications</p>
+                )}
+
                 {notifications.map((n) => (
                   <div
                     key={n._id}
@@ -59,7 +72,10 @@ export default function AdminHeader({ notifications = [], unreadCount = 0, onMar
           </div>
 
           {/* Logout */}
-          <button onClick={handleLogout} className="bg-red-500 px-3 py-1 rounded">
+          <button
+            onClick={handleLogout}
+            className="bg-red-500 px-3 py-1 rounded"
+          >
             Logout
           </button>
         </div>

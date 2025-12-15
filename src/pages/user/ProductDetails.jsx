@@ -1,4 +1,3 @@
-// src/pages/ProductDetails.jsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -38,6 +37,25 @@ export default function ProductDetail() {
   if (loading) return <p className="p-4">Loading...</p>;
   if (!product) return <p className="p-4">Product not found</p>;
 
+  /* ================= HELPERS ================= */
+
+  const getStarColor = (rating) => {
+    if (rating >= 4) return "text-green-500";
+    if (rating === 3) return "text-yellow-400";
+    return "text-red-500";
+  };
+
+  const averageRating = Math.round(product.rating || 0);
+  const ratingPercentage = Math.round((averageRating / 5) * 100);
+
+  const images = product.images?.length
+    ? product.images
+    : ["https://via.placeholder.com/400x400?text=No+Image"];
+
+  const price = product.discountPrice || product.price || 0;
+
+  /* ================= ACTIONS ================= */
+
   const handleAddToCart = () => {
     dispatch(addItem(product));
     alert("Added to cart!");
@@ -52,97 +70,76 @@ export default function ProductDetail() {
     dispatch(toggleWishlistItem(product));
   };
 
-  const images = product.images?.length
-    ? product.images
-    : ["https://via.placeholder.com/400x400?text=No+Image"];
-
-  const nextImage = () => {
-    setActiveImage((prev) => (prev + 1) % images.length);
-  };
-
-  const prevImage = () => {
-    setActiveImage((prev) => (prev - 1 + images.length) % images.length);
-  };
-
-  const price = product.discountPrice || product.price || 0;
-
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
       <div className="grid md:grid-cols-2 gap-6 bg-white p-4 rounded-lg shadow-sm">
 
-        {/* ===== IMAGE SLIDER ===== */}
+        {/* ===== IMAGE ===== */}
         <div className="relative">
           <img
             src={images[activeImage]}
             alt={product.name}
-            className="w-full h-80 object-cover rounded transition-all duration-300"
+            className="w-full h-80 object-cover rounded"
           />
 
-          {/* Prev Button */}
           {images.length > 1 && (
-            <button
-              onClick={prevImage}
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/70 px-3 py-1 rounded-full shadow"
-            >
-              ‹
-            </button>
+            <>
+              <button
+                onClick={() =>
+                  setActiveImage((p) => (p - 1 + images.length) % images.length)
+                }
+                className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/70 px-3 py-1 rounded"
+              >
+                ‹
+              </button>
+
+              <button
+                onClick={() =>
+                  setActiveImage((p) => (p + 1) % images.length)
+                }
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/70 px-3 py-1 rounded"
+              >
+                ›
+              </button>
+            </>
           )}
 
-          {/* Next Button */}
-          {images.length > 1 && (
-            <button
-              onClick={nextImage}
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/70 px-3 py-1 rounded-full shadow"
-            >
-              ›
-            </button>
-          )}
-
-          {/* Wishlist Icon */}
           <button
             onClick={handleToggleWishlist}
-            className="absolute top-3 right-3 bg-white/80 rounded-full p-2 shadow hover:bg-white"
+            className="absolute top-3 right-3 bg-white p-2 rounded-full"
           >
-            <span className={wishlisted ? "text-red-500 text-xl" : "text-gray-400 text-xl"}>
-              {wishlisted ? "❤️" : "🤍"}
-            </span>
+            {wishlisted ? "❤️" : "🤍"}
           </button>
-
-          {/* Dots */}
-          <div className="flex justify-center gap-2 mt-3">
-            {images.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setActiveImage(i)}
-                className={`w-2.5 h-2.5 rounded-full ${
-                  i === activeImage ? "bg-gray-800" : "bg-gray-300"
-                }`}
-              />
-            ))}
-          </div>
         </div>
 
-        {/* ===== PRODUCT DETAILS ===== */}
+        {/* ===== DETAILS ===== */}
         <div>
           <h1 className="text-xl font-semibold mb-2">{product.name}</h1>
 
-          {/* Rating */}
-          <div className="flex items-center gap-2 mb-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <span
-                key={i}
-                className={
-                  i < Math.round(product.rating || 0)
-                    ? "text-yellow-400"
-                    : "text-gray-300"
-                }
-              >
-                ★
+          {/* ===== PRODUCT RATING ===== */}
+          <div className="mb-3">
+            <div className="flex items-center gap-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <span
+                  key={i}
+                  className={
+                    i < averageRating
+                      ? getStarColor(averageRating)
+                      : "text-gray-300"
+                  }
+                >
+                  ★
+                </span>
+              ))}
+
+              <span className="text-sm text-gray-600">
+                ({product.reviews?.length || 0} reviews)
               </span>
-            ))}
-            <span className="text-sm text-gray-600">
-              ({product.numReviews || product.reviews?.length || 0} reviews)
-            </span>
+            </div>
+
+            <div className="text-sm text-gray-500 mt-1">
+              {ratingPercentage}% positive ratings
+            </div>
           </div>
 
           <p className="text-sm text-gray-600 mb-3">{product.description}</p>
@@ -150,64 +147,59 @@ export default function ProductDetail() {
           <div className="flex items-center gap-3 mb-4">
             <span className="text-xl font-bold">₹{price}</span>
             {product.discountPrice && (
-              <span className="text-sm text-gray-400 line-through">
+              <span className="line-through text-gray-400">
                 ₹{product.price}
               </span>
             )}
           </div>
 
-          <div className="flex gap-3 mb-3">
+          <div className="flex gap-3 mb-4">
             <button
               onClick={handleAddToCart}
-              className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+              className="bg-amber-500 text-white px-4 py-2 rounded"
             >
               Add to Cart
             </button>
 
             <button
               onClick={handleBuyNow}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+              className="bg-indigo-600 text-white px-4 py-2 rounded"
             >
               Buy Now
             </button>
           </div>
 
-          <button
-            onClick={handleToggleWishlist}
-            className="text-sm text-red-500 hover:underline"
-          >
-            {wishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
-          </button>
-
           {/* ===== REVIEWS ===== */}
-          {product.reviews && product.reviews.length > 0 && (
+          {product.reviews?.length > 0 && (
             <div className="mt-6">
-              <h3 className="font-semibold mb-2">Reviews:</h3>
+              <h3 className="font-semibold mb-2">Customer Reviews</h3>
+
               <ul className="space-y-2">
                 {product.reviews.map((review) => (
-                  <li key={review._id} className="border p-2 rounded-md bg-gray-50">
-                    <div className="flex items-center gap-1 mb-1">
+                  <li key={review._id} className="border p-2 rounded bg-gray-50">
+                    <div className="flex gap-1 mb-1">
                       {Array.from({ length: 5 }).map((_, i) => (
                         <span
                           key={i}
                           className={
-                            i < review.rating ? "text-yellow-400" : "text-gray-300"
+                            i < review.rating
+                              ? getStarColor(review.rating)
+                              : "text-gray-300"
                           }
                         >
                           ★
                         </span>
                       ))}
-                      <span className="text-sm text-gray-500">
-                        by {review.userName}
+                      <span className="text-sm text-gray-500 ml-2">
+                        {review.userName}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-700">{review.comment}</p>
+                    <p className="text-sm">{review.comment}</p>
                   </li>
                 ))}
               </ul>
             </div>
           )}
-
         </div>
       </div>
     </div>
