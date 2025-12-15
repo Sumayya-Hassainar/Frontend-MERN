@@ -137,54 +137,30 @@ export async function fetchCustomerOrderTracking(orderId) {
   }));
   return { order: data.order, timeline: Array.isArray(data.timeline) ? data.timeline : [] };
 }
+
 /* ================= COD PAYMENT ================= */
-export async function createPayment(paymentData) {
-  if (paymentData.paymentMethod !== "cod") {
-    throw new Error("createPayment is only for COD");
-  }
-
+export async function createPayment(payload) {
+  // COD / manual payment
   const res = await fetch(`${API_BASE}/payments`, {
     method: "POST",
     headers: getAuthHeaders(),
-    body: JSON.stringify({
-      orderId: paymentData.orderId,
-      amount: Number(paymentData.amount),
-      paymentMethod: "cod",
-    }),
+    body: JSON.stringify(payload),
   });
 
   return handleResponse(res);
 }
 
-/* ================= ONLINE PAYMENT (CARD / UPI) ================= */
-export async function createOnlinePayment(paymentData) {
-  if (!["card", "upi"].includes(paymentData.paymentMethod)) {
-    throw new Error("createOnlinePayment is only for card or UPI");
-  }
-
-  const res = await fetch(`${API_BASE}/payments`, {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify({
-      orderId: paymentData.orderId,
-      amount: Number(paymentData.amount),
-      paymentMethod: paymentData.paymentMethod, // "card" or "upi"
-    }),
-  });
-
-  return handleResponse(res);
-}
-
-/* ================= STRIPE CHECKOUT SESSION ================= */
-export async function createStripeCheckoutSession(orderId) {
+/* ================= STRIPE ONLINE PAYMENT ================= */
+export async function createOnlinePayment(orderId) {
   const res = await fetch(`${API_BASE}/payments/stripe/create-session`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify({ orderId }),
   });
-
-  return handleResponse(res);
+  return handleResponse(res); // returns { success, sessionId, url }
 }
+
+
 /* ================= DEFAULT EXPORT ================= */
 export default {
   getAuthHeaders,
@@ -204,6 +180,5 @@ export default {
   createOnlinePayment,
   fetchOrderStatusesByOrder,
   fetchCustomerOrderTracking,
-  createStripeCheckoutSession,
-  
+ 
 };

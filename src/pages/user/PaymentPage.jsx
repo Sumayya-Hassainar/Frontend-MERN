@@ -1,16 +1,14 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
+
 import {
   selectCartItems,
   selectSubtotal,
   clearCart,
-} from "../../redux/slice/CartSlice.jsx";
-import {
-  createOrder,
-  createPayment,
-  createOnlinePayment,
-} from "../../api/api.jsx";
+} from "../../redux/slice/CartSlice";
+
+import { createOrder, createPayment, createOnlinePayment } from "../../api/api";
 
 export default function PaymentPage() {
   const dispatch = useDispatch();
@@ -20,33 +18,29 @@ export default function PaymentPage() {
   const items = useSelector(selectCartItems);
   const subtotal = useSelector(selectSubtotal);
 
-  const shipping = location.state?.shipping || null;
-  const totalAmount = location.state?.totalAmount ?? subtotal;
+  const shipping = location.state?.shipping;
+  const totalAmount = Number(location.state?.totalAmount ?? subtotal);
 
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [orderPlaced, setOrderPlaced] = useState(false);
 
   const handlePay = async () => {
-    if (!items.length) return setError("Your cart is empty.");
-    if (!shipping) return setError("Shipping details are missing.");
+    if (!items.length) return setError("Your cart is empty");
+    if (!shipping) return setError("Shipping details missing");
 
     setLoading(true);
     setError("");
 
     try {
-      // Prepare products payload
-      const products = items.map((i) => {
-        if (!i.product?._id) throw new Error("Invalid product in cart");
-        return {
-          product: i.product._id,
-          quantity: i.quantity,
-          price: i.product.price,
-        };
-      });
+      const products = items.map((i) => ({
+        product: i.product._id,
+        quantity: i.quantity,
+        price: i.product.price,
+      }));
 
-      const orderPayload = {
+      // 1️⃣ Create order
+      const order = await createOrder({
         products,
         shippingAddress: {
           fullName: shipping.name,
@@ -57,135 +51,102 @@ export default function PaymentPage() {
           pincode: shipping.pincode,
           country: "India",
         },
-        totalAmount: Number(totalAmount),
+        totalAmount,
         paymentMethod,
-      };
+      });
 
-      // Create order
-      const order = await createOrder(orderPayload);
-      if (!order?._id) throw new Error("Order creation failed");
-
+      // 2️⃣ Payment handling
       if (paymentMethod === "cod") {
-        // COD Payment
+        // COD
         await createPayment({
-          orderId: order._id,
-          amount: totalAmount,
-          paymentMethod: "cod",
-        });
-      } else {
-        // Online Payment (Card / UPI)
-        await createOnlinePayment({
           orderId: order._id,
           amount: totalAmount,
           paymentMethod,
         });
+        dispatch(clearCart());
+        navigate("/orders");
+      } else {
+        // Online / Stripe payment
+        const session = await createOnlinePayment(order._id);
+          console.log("Stripe session:", session); 
+        if (session?.url) {
+          window.location.href = session.url; // redirect to Stripe checkout
+        } else {
+          throw new Error("Failed to create Stripe session");
+        }
       }
-
-      dispatch(clearCart());
-      setOrderPlaced(true);
     } catch (err) {
-      console.error("Payment error:", err);
       setError(err.message || "Payment failed");
     } finally {
       setLoading(false);
     }
   };
 
-  if (!shipping && !orderPlaced) {
-    return (
-      <div className="max-w-2xl mx-auto p-6">
-        <p className="text-sm text-red-600 mb-2">
-          Shipping details not found. Please complete checkout first.
-        </p>
-        <button
-          onClick={() => navigate("/checkout")}
-          className="text-sm text-indigo-600 underline"
-        >
-          Go to Checkout
-        </button>
-      </div>
-    );
-  }
-
-  if (orderPlaced) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6">
-        <div className="w-20 h-20 flex items-center justify-center rounded-full bg-green-500 text-white text-4xl mb-4">
-          ✓
-        </div>
-        <h1 className="text-2xl font-semibold mb-2">Order Placed</h1>
-        <p className="text-gray-600 text-sm mb-6">
-          Your order has been successfully placed.
-        </p>
-        <button
-          onClick={() => navigate("/orders")}
-          className="bg-indigo-600 text-white px-6 py-2 rounded-md text-sm font-medium"
-        >
-          View My Orders
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-2xl mx-auto p-6 space-y-4">
-      <h1 className="text-xl font-semibold mb-2">Payment</h1>
+    <div className="max-w-2xl mx-auto p-6 space-y-6">
+      <h1 className="text-2xl font-semibold">Checkout</h1>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded text-sm">
+          {error}
+        </div>
+      )}
 
-      {/* Shipping Card */}
-      <div className="bg-white border rounded-lg p-4">
-        <h2 className="text-sm font-semibold mb-2">Shipping Address</h2>
-        <p className="text-sm font-medium">{shipping.name}</p>
-        <p className="text-sm">{shipping.addressLine1}</p>
-        <p className="text-sm">
-          {shipping.city}, {shipping.state} - {shipping.pincode}
+      {/* ================= SHIPPING ================= */}
+      <div className="bg-white border rounded-lg p-5">
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">
+          Shipping Address
+        </h2>
+        <p className="font-medium">{shipping?.name}</p>
+        <p className="text-sm text-gray-600">{shipping?.addressLine1}</p>
+        <p className="text-sm text-gray-600">
+          {shipping?.city}, {shipping?.state} - {shipping?.pincode}
         </p>
-        <p className="text-sm">Phone: {shipping.phone}</p>
+        <p className="text-sm text-gray-600">Phone: {shipping?.phone}</p>
       </div>
 
-      {/* Order Amount */}
-      <div className="bg-white border rounded-lg p-4">
-        <h2 className="text-sm font-semibold mb-2">Order Amount</h2>
-        <p className="text-lg font-bold">₹{Number(totalAmount).toFixed(2)}</p>
+      {/* ================= AMOUNT ================= */}
+      <div className="bg-white border rounded-lg p-5 flex justify-between">
+        <span className="text-sm text-gray-700">Total Amount</span>
+        <span className="text-xl font-bold">₹{totalAmount.toFixed(2)}</span>
       </div>
 
-      {/* Payment Method */}
-      <div className="bg-white border rounded-lg p-4">
-        <h2 className="text-sm font-semibold mb-2">Payment Method</h2>
+      {/* ================= PAYMENT METHOD ================= */}
+      <div className="bg-white border rounded-lg p-5 space-y-3">
+        <h2 className="text-sm font-semibold text-gray-700">Payment Method</h2>
 
-        <label className="flex items-center gap-2 text-sm mb-2">
+        <label className="flex items-center gap-3 cursor-pointer">
           <input
             type="radio"
             value="cod"
             checked={paymentMethod === "cod"}
             onChange={(e) => setPaymentMethod(e.target.value)}
           />
-          Cash on Delivery
+          <span className="text-sm">Cash on Delivery</span>
         </label>
 
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-3 cursor-pointer">
           <input
             type="radio"
-            value="card"
-            checked={paymentMethod === "card"}
+            value="online"
+            checked={paymentMethod === "online"}
             onChange={(e) => setPaymentMethod(e.target.value)}
           />
-          Card / UPI
+          <span className="text-sm">Card / UPI</span>
         </label>
       </div>
 
-      {/* Pay Button */}
+      {/* ================= ACTION ================= */}
       <button
         onClick={handlePay}
         disabled={loading}
-        className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium w-full"
+        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-medium disabled:opacity-60"
       >
         {loading
           ? "Processing..."
           : paymentMethod === "cod"
-          ? "Place Order (COD)"
-          : "Pay & Place Order"}
+          ? "Place Order"
+          : "Confirm & Pay"}
       </button>
     </div>
   );
