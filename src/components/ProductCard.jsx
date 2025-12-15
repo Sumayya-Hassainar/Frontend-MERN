@@ -1,10 +1,10 @@
+// src/components/ProductCard.jsx
 import React from "react";
 import { Link } from "react-router-dom";
 
 export default function ProductCard({ product }) {
-  // Fallback to placeholder if no images
-  const imageUrl =
-    Array.isArray(product.images) && product.images.length > 0
+  const image =
+    product.images && product.images.length > 0
       ? product.images[0]
       : "https://via.placeholder.com/300x200?text=No+Image";
 
@@ -15,25 +15,25 @@ export default function ProductCard({ product }) {
     >
       <div className="h-40 w-full bg-gray-100">
         <img
-          src={imageUrl}
-          alt={product.name || "Product Image"}
+          src={image}
+          alt={product.name}
           className="w-full h-full object-cover"
         />
       </div>
       <div className="p-3">
         <h3 className="text-sm font-semibold line-clamp-2">
-          {product.name || "Unnamed Product"}
+          {product.name}
         </h3>
         <p className="text-xs text-gray-500 mt-1">
           {product.category?.name || product.category || "Category"}
         </p>
         <div className="mt-2 flex items-center justify-between">
           <span className="text-lg font-bold text-gray-900">
-            ₹{Number(product.price || 0).toFixed(2)}
+            ₹{product.price}
           </span>
-          {product.discountPrice != null && (
+          {product.discountPrice && (
             <span className="text-xs text-green-600 font-medium">
-              Offer ₹{Number(product.discountPrice).toFixed(2)}
+              Offer ₹{product.discountPrice}
             </span>
           )}
         </div>
