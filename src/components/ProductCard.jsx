@@ -1,11 +1,10 @@
-// src/components/ProductCard.jsx
 import React from "react";
 import { Link } from "react-router-dom";
 
 export default function ProductCard({ product }) {
   const image =
     product.images && product.images.length > 0
-      ? product.images[0]
+      ? product.images[0] // full URL from backend
       : "https://via.placeholder.com/300x200?text=No+Image";
 
   return (
@@ -21,16 +20,12 @@ export default function ProductCard({ product }) {
         />
       </div>
       <div className="p-3">
-        <h3 className="text-sm font-semibold line-clamp-2">
-          {product.name}
-        </h3>
+        <h3 className="text-sm font-semibold line-clamp-2">{product.name}</h3>
         <p className="text-xs text-gray-500 mt-1">
           {product.category?.name || product.category || "Category"}
         </p>
         <div className="mt-2 flex items-center justify-between">
-          <span className="text-lg font-bold text-gray-900">
-            ₹{product.price}
-          </span>
+          <span className="text-lg font-bold text-gray-900">₹{product.price}</span>
           {product.discountPrice && (
             <span className="text-xs text-green-600 font-medium">
               Offer ₹{product.discountPrice}
