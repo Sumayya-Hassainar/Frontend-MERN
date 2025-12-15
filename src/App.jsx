@@ -38,7 +38,7 @@ import ReviewList from "./components/reviewsection/ReviewForm.jsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
 import AdminPanel from "./pages/admin/AdminPanel.jsx";
 import AdminOrders from "./pages/admin/AdminOrder.jsx";
-import AdminOrderHandle from "./pages/admin/AdminOrderHandle.jsx"
+import AdminOrderHandle from "./pages/admin/AdminOrderHandle.jsx";
 import AdminReviewList from "./pages/admin/AdminReviewList.jsx";
 
 // ================= VENDOR PAGES =================
@@ -46,12 +46,14 @@ import VendorLandingPage from "./pages/vendor/VendorLandingPage.jsx";
 import VendorRegisterPage from "./pages/vendor/VendorRegisterPage.jsx";
 import VendorLoginPage from "./pages/vendor/VendorLoginPage.jsx";
 import VendorDashboard from "./pages/vendor/VendorDashboard.jsx";
-import VendorOrders from "./pages/vendor/VendorOrders.jsx"
+import VendorOrders from "./pages/vendor/VendorOrders.jsx";
 
 // ================= API =================
 import { fetchMyNotifications, markNotificationAsRead } from "./api/accountapi.jsx";
 import ResetPassword from "./utils/ResetPassword.jsx";
 import UserManage from "./pages/admin/UserManage.jsx";
+import ChatWidget from "./components/ChatWidget.jsx";
+import ContactPage from "./pages/common/Contact.jsx";
 
 // ================= REVIEW WRAPPER =================
 const ProductReviews = ({ role }) => {
@@ -108,18 +110,16 @@ function App() {
     }
   };
 
-const toggleTheme = () => {
-  const newTheme = theme === "light" ? "dark" : "light";
-  setTheme(newTheme);
-  localStorage.setItem("theme", newTheme);
-  document.documentElement.classList.toggle("dark", newTheme === "dark");
-};
-
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
+    document.documentElement.classList.toggle("dark", newTheme === "dark");
+  };
 
   return (
     <Provider store={store}>
-     <div >
-
+      <div>
         {/* ================= ROLE BASED HEADER ================= */}
         {role === "admin" ? (
           <AdminHeader setRole={setRole} />
@@ -141,7 +141,6 @@ const toggleTheme = () => {
 
         <main className="flex-1">
           <Routes>
-
             {/* ================= PUBLIC ================= */}
             <Route path="/" element={<Home query={query} />} />
             <Route path="/wishlist" element={<WishlistPage />} />
@@ -152,34 +151,138 @@ const toggleTheme = () => {
             <Route path="/products/:id/reviews" element={<ProductReviews role={role} />} />
             <Route path="/search" element={<SearchResults query={query} />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
+            <Route path="/contact"element={<ContactPage/>}/>
 
             {/* ================= CUSTOMER ================= */}
-            <Route path="/myaccount" element={<ProtectedRoute allowedRoles={["customer"]}><MyAccount /></ProtectedRoute>} />
-            <Route path="/cart" element={<ProtectedRoute allowedRoles={["customer"]}><CartPage /></ProtectedRoute>} />
-            <Route path="/checkout" element={<ProtectedRoute allowedRoles={["customer"]}><CheckoutPage /></ProtectedRoute>} />
-            <Route path="/payment" element={<ProtectedRoute allowedRoles={["customer"]}><PaymentPage /></ProtectedRoute>} />
-            <Route path="/orders" element={<ProtectedRoute allowedRoles={["customer"]}><OrdersPage /></ProtectedRoute>} />
-            <Route path="/orders/:id" element={<ProtectedRoute allowedRoles={["customer"]}><OrderDetailPage /></ProtectedRoute>} />
+            <Route
+              path="/myaccount"
+              element={
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <MyAccount />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/cart"
+              element={
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <CartPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/checkout"
+              element={
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <CheckoutPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/payment"
+              element={
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <PaymentPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/orders"
+              element={
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <OrdersPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/orders/:id"
+              element={
+                <ProtectedRoute allowedRoles={["customer"]}>
+                  <OrderDetailPage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* ================= HELP DESK ================= */}
-            <Route path="/help-desk" element={<ProtectedRoute allowedRoles={["customer", "vendor"]}><HelpDesk /></ProtectedRoute>} />
+            <Route
+              path="/help-desk"
+              element={
+                <ProtectedRoute allowedRoles={["customer", "vendor"]}>
+                  <HelpDesk />
+                </ProtectedRoute>
+              }
+            />
 
             {/* ================= ADMIN ================= */}
-            <Route path="/admin" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
-            <Route path="/admin/orders" element={<ProtectedRoute allowedRoles={["admin"]}><AdminOrders /></ProtectedRoute>} />
-            <Route path="/admin/orders/:id/handle" element={<ProtectedRoute allowedRoles={["admin"]}><AdminOrderHandle /></ProtectedRoute>} />
-            <Route path="/admin/panel" element={<ProtectedRoute allowedRoles={["admin"]}><AdminPanel /></ProtectedRoute>} />
-            <Route path="/admin/review" element={<ProtectedRoute allowedRoles={["admin"]}><AdminReviewList /></ProtectedRoute>} />
-            <Route path="/admin/users" element={<ProtectedRoute allowedRoles={["admin"]}><UserManage/></ProtectedRoute>} />
-
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/orders"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminOrders />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/orders/:id/handle"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminOrderHandle />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/panel"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminPanel />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/review"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminReviewList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <UserManage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* ================= VENDOR ================= */}
             <Route path="/vendor/become-seller" element={<VendorLandingPage />} />
             <Route path="/vendor/register" element={<VendorRegisterPage />} />
             <Route path="/vendor/login" element={<VendorLoginPage setRole={setRole} />} />
-            <Route path="/vendor/dashboard" element={<ProtectedRoute allowedRoles={["vendor"]}><VendorDashboard /></ProtectedRoute>} />
-             <Route path="/vendor/orders" element={<ProtectedRoute allowedRoles={["vendor"]}><VendorOrders /></ProtectedRoute>} />
-
+            <Route
+              path="/vendor/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["vendor"]}>
+                  <VendorDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/vendor/orders"
+              element={
+                <ProtectedRoute allowedRoles={["vendor"]}>
+                  <VendorOrders />
+                </ProtectedRoute>
+              }
+            />
 
             {/* ================= 404 ================= */}
             <Route
@@ -192,14 +295,14 @@ const toggleTheme = () => {
               }
             />
           </Routes>
+
+          {/* ================= CHAT WIDGET ================= */}
+          <ChatWidget />
         </main>
 
         <Footer />
       </div>
-     
     </Provider>
-    
-
   );
 }
 

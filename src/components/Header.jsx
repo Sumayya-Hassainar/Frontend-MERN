@@ -210,7 +210,7 @@ export default function Header({
             <Link to="/orders">Orders</Link>
             <Link to="/wishlist">Wishlist</Link>
             <Link to="/myaccount">My Account</Link>
-            <Link to="/help-desk">💬 Help Desk</Link>
+            <Link to="/contact">💬 Contact</Link>
           </div>
         </div>
       </header>
@@ -224,7 +224,7 @@ export default function Header({
             <Link to="/cart" className="flex flex-col items-center text-blue-600 font-bold">🛒 Cart</Link>
           )}
           <Link to="/wishlist" className="flex flex-col items-center">❤️ Wishlist</Link>
-          <Link to="/help-desk" className="flex flex-col items-center">💬 Help</Link>
+          <Link to="/contact" className="flex flex-col items-center">💬 Contact</Link>
         </div>
       </div>
     </>
