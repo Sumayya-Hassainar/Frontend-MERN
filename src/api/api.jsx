@@ -1,4 +1,6 @@
+// api.jsx
 const API_BASE = import.meta.env.VITE_API_URL || "https://backend-mern-ex49.onrender.com/api";
+
 
 /* ================= AUTH HEADER ================= */
 export function getAuthHeaders(extra = {}) {
@@ -21,101 +23,131 @@ async function handleResponse(res) {
   let data = {};
   try {
     data = await res.json();
-  } catch {}
+  } catch (err) {
+    console.warn("No JSON returned:", err);
+  }
+
   if (!res.ok) {
     const msg = data?.message || `Request failed with status ${res.status}`;
     throw new Error(msg);
   }
+
   return data;
+}
+
+/* ================= HELPER FETCH WITH ERROR LOG ================= */
+async function safeFetch(url, options = {}) {
+  try {
+    const res = await fetch(url, options);
+    return await handleResponse(res);
+  } catch (err) {
+    console.error("API fetch error:", url, err);
+    throw err;
+  }
 }
 
 /* ================= AUTH ================= */
 export async function registerUser(payload) {
-  return handleResponse(await fetch(`${API_BASE}/users/register`, {
+  return safeFetch(`${API_BASE}/users/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
-  }));
+  });
 }
 
 export async function loginUser(payload) {
-  return handleResponse(await fetch(`${API_BASE}/users/login`, {
+  return safeFetch(`${API_BASE}/users/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
-  }));
+  });
 }
 
 export async function verifyOtp(payload) {
-  return handleResponse(await fetch(`${API_BASE}/users/verify-otp`, {
+  return safeFetch(`${API_BASE}/users/verify-otp`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
-  }));
+  });
 }
 
 export async function forgotPassword(payload) {
-  return handleResponse(await fetch(`${API_BASE}/users/forgot-password`, {
+  return safeFetch(`${API_BASE}/users/forgot-password`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
-  }));
+  });
 }
 
 export async function resetPassword(payload) {
-  return handleResponse(await fetch(`${API_BASE}/users/reset-password`, {
+  return safeFetch(`${API_BASE}/users/reset-password`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
-  }));
+  });
 }
 
 export async function fetchMyProfile() {
   requireToken();
-  return handleResponse(await fetch(`${API_BASE}/users/profile`, {
+  return safeFetch(`${API_BASE}/users/profile`, {
     headers: getAuthHeaders(),
-  }));
+  });
 }
 
 /* ================= PRODUCTS ================= */
 export async function fetchProducts() {
-  return handleResponse(await fetch(`${API_BASE}/products`));
+  return safeFetch(`${API_BASE}/products`, {
+    headers: getAuthHeaders(),
+    credentials: "include",
+  });
 }
 
 export async function fetchProductById(id) {
   if (!id) throw new Error("Product ID is required");
-  return handleResponse(await fetch(`${API_BASE}/products/${id}`));
+  return safeFetch(`${API_BASE}/products/${id}`, {
+    headers: getAuthHeaders(),
+    credentials: "include",
+  });
 }
 
 /* ================= CUSTOMER ORDERS ================= */
 export async function fetchCustomerOrders() {
-  requireToken();
-  return handleResponse(await fetch(`${API_BASE}/orders/myorders`, {
-    headers: getAuthHeaders(),
-  }));
+  requireToken(); // ensures token is set
+
+  try {
+    console.log("Fetching customer orders from:", `${API_BASE}/orders/myorders`);
+
+    const response = await safeFetch(`${API_BASE}/orders/myorders`, {
+      headers: getAuthHeaders(),
+    });
+
+    console.log("✅ ORDERS API RESPONSE:", response);
+
+    return response; // should contain response.orders
+  } catch (error) {
+    console.error("❌ ERROR fetching customer orders:", error);
+    throw error; // rethrow so calling code can handle
+  }
 }
 
 export async function fetchOrderById(orderId) {
   requireToken();
   if (!orderId) throw new Error("Order ID is required");
-  return handleResponse(await fetch(`${API_BASE}/orders/${orderId}`, {
+  return safeFetch(`${API_BASE}/orders/${orderId}`, {
     headers: getAuthHeaders(),
-  }));
+  });
 }
 
 /* ================= CREATE ORDER ================= */
 export async function createOrder(orderData) {
   requireToken();
-
-  const res = await fetch(`${API_BASE}/orders`, {
+  const data = await safeFetch(`${API_BASE}/orders`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify(orderData),
   });
 
-  const data = await handleResponse(res);
-
-  // 🔴 THIS IS THE FIX
+  // Return the order object if present
   return data.order ?? data;
 }
 
@@ -123,43 +155,41 @@ export async function createOrder(orderData) {
 export async function fetchOrderStatusesByOrder(orderId) {
   requireToken();
   if (!orderId) throw new Error("Order ID is required");
-  const data = await handleResponse(await fetch(`${API_BASE}/order-statuses/order/${orderId}`, {
+  const data = await safeFetch(`${API_BASE}/order-statuses/order/${orderId}`, {
     headers: getAuthHeaders(),
-  }));
+  });
   return Array.isArray(data.statuses) ? data.statuses : [];
 }
 
 export async function fetchCustomerOrderTracking(orderId) {
   requireToken();
   if (!orderId) throw new Error("Order ID is required");
-  const data = await handleResponse(await fetch(`${API_BASE}/order-statuses/track/${orderId}`, {
+  const data = await safeFetch(`${API_BASE}/order-statuses/track/${orderId}`, {
     headers: getAuthHeaders(),
-  }));
+  });
   return { order: data.order, timeline: Array.isArray(data.timeline) ? data.timeline : [] };
 }
 
 /* ================= COD PAYMENT ================= */
 export async function createPayment(payload) {
-  // COD / manual payment
-  const res = await fetch(`${API_BASE}/payments`, {
+  requireToken();
+  return safeFetch(`${API_BASE}/payments`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
   });
-
-  return handleResponse(res);
 }
 
 /* ================= STRIPE ONLINE PAYMENT ================= */
 export async function createOnlinePayment(orderId) {
-  const res = await fetch(`${API_BASE}/payments/stripe/create-session`, {
+  requireToken();
+  if (!orderId) throw new Error("Order ID is required");
+  return safeFetch(`${API_BASE}/payments/stripe/create-session`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify({ orderId }),
   });
-  return handleResponse(res); // returns { success, sessionId, url }
 }
-
 
 /* ================= DEFAULT EXPORT ================= */
 export default {
@@ -180,5 +210,4 @@ export default {
   createOnlinePayment,
   fetchOrderStatusesByOrder,
   fetchCustomerOrderTracking,
- 
 };

@@ -1,3 +1,4 @@
+// src/pages/user/PaymentPage.jsx
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
@@ -8,7 +9,7 @@ import {
   clearCart,
 } from "../../redux/slice/CartSlice";
 
-import { createOrder, createPayment, createOnlinePayment } from "../../api/api";
+import { createOrder, createOnlinePayment } from "../../api/api";
 
 export default function PaymentPage() {
   const dispatch = useDispatch();
@@ -24,6 +25,7 @@ export default function PaymentPage() {
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [orderSuccess, setOrderSuccess] = useState(null);
 
   const handlePay = async () => {
     if (!items.length) return setError("Your cart is empty");
@@ -39,7 +41,7 @@ export default function PaymentPage() {
         price: i.product.price,
       }));
 
-      // 1️⃣ Create order
+      // Create order
       const order = await createOrder({
         products,
         shippingAddress: {
@@ -55,24 +57,19 @@ export default function PaymentPage() {
         paymentMethod,
       });
 
-      // 2️⃣ Payment handling
+      if (!order?._id) throw new Error("Order creation failed");
+
       if (paymentMethod === "cod") {
-        // COD
-        await createPayment({
-          orderId: order._id,
-          amount: totalAmount,
-          paymentMethod,
-        });
+        // COD: show confirmation first
+        setOrderSuccess(order);
         dispatch(clearCart());
-        navigate("/orders");
       } else {
-        // Online / Stripe payment
+        // Online payment
         const session = await createOnlinePayment(order._id);
-          console.log("Stripe session:", session); 
         if (session?.url) {
-          window.location.href = session.url; // redirect to Stripe checkout
+          window.location.href = session.url;
         } else {
-          throw new Error("Failed to create Stripe session");
+          throw new Error("Failed to create payment session");
         }
       }
     } catch (err) {
@@ -82,6 +79,37 @@ export default function PaymentPage() {
     }
   };
 
+  // COD confirmation screen
+  if (orderSuccess && paymentMethod === "cod") {
+    return (
+      <div className="max-w-2xl mx-auto p-6 space-y-6 text-center">
+        <h1 className="text-2xl font-semibold text-green-600">Order Placed!</h1>
+        <p className="text-gray-700">
+          Your order <span className="font-medium">#{orderSuccess._id}</span> has been placed successfully.
+        </p>
+        <p className="text-gray-600">
+          Total Amount: ₹{orderSuccess.totalAmount.toFixed(2)}
+        </p>
+        <div className="bg-white border rounded-lg p-5 text-left">
+          <h2 className="text-sm font-semibold text-gray-700 mb-2">Shipping Address</h2>
+          <p className="font-medium">{orderSuccess.shippingAddress.fullName}</p>
+          <p className="text-sm text-gray-600">{orderSuccess.shippingAddress.street}</p>
+          <p className="text-sm text-gray-600">
+            {orderSuccess.shippingAddress.city}, {orderSuccess.shippingAddress.state} - {orderSuccess.shippingAddress.pincode}
+          </p>
+          <p className="text-sm text-gray-600">Phone: {orderSuccess.shippingAddress.phone}</p>
+        </div>
+        <button
+          onClick={() => navigate("/orders", { state: { newOrder: orderSuccess } })}
+          className="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-medium"
+        >
+          View My Orders
+        </button>
+      </div>
+    );
+  }
+
+  // Normal checkout page
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-semibold">Checkout</h1>
@@ -92,26 +120,19 @@ export default function PaymentPage() {
         </div>
       )}
 
-      {/* ================= SHIPPING ================= */}
       <div className="bg-white border rounded-lg p-5">
-        <h2 className="text-sm font-semibold text-gray-700 mb-2">
-          Shipping Address
-        </h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">Shipping Address</h2>
         <p className="font-medium">{shipping?.name}</p>
         <p className="text-sm text-gray-600">{shipping?.addressLine1}</p>
-        <p className="text-sm text-gray-600">
-          {shipping?.city}, {shipping?.state} - {shipping?.pincode}
-        </p>
+        <p className="text-sm text-gray-600">{shipping?.city}, {shipping?.state} - {shipping?.pincode}</p>
         <p className="text-sm text-gray-600">Phone: {shipping?.phone}</p>
       </div>
 
-      {/* ================= AMOUNT ================= */}
       <div className="bg-white border rounded-lg p-5 flex justify-between">
         <span className="text-sm text-gray-700">Total Amount</span>
         <span className="text-xl font-bold">₹{totalAmount.toFixed(2)}</span>
       </div>
 
-      {/* ================= PAYMENT METHOD ================= */}
       <div className="bg-white border rounded-lg p-5 space-y-3">
         <h2 className="text-sm font-semibold text-gray-700">Payment Method</h2>
 
@@ -136,7 +157,6 @@ export default function PaymentPage() {
         </label>
       </div>
 
-      {/* ================= ACTION ================= */}
       <button
         onClick={handlePay}
         disabled={loading}
