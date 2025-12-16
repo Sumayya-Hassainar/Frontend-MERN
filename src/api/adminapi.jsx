@@ -81,7 +81,7 @@ export async function rejectVendorRequest(id) {
 }
 
 /* ================= ORDER MANAGEMENT ================= */
-/* ================= ORDER MANAGEMENT ================= */
+
 export async function fetchAllOrders() {
   const res = await fetch(`${API_BASE}/orders`, { headers: getAuthHeaders() });
   if (!res.ok) throw new Error("Failed to fetch orders");
@@ -89,24 +89,45 @@ export async function fetchAllOrders() {
 }
 
 export async function sendOrderToVendor(orderId, vendorId) {
+  console.log("🔥 sendOrderToVendor called", { orderId, vendorId });
+
   const res = await fetch(`${API_BASE}/orders/${orderId}/assign`, {
     method: "PUT",
     headers: getAuthHeaders(),
     body: JSON.stringify({ vendorId }),
   });
-  if (!res.ok) throw new Error("Failed to assign order");
-  return normalize(res);
+
+  const data = await res.json();
+
+  if (!data.success) {
+    console.error("ASSIGN ORDER API ERROR:", data);
+    throw new Error(data.message || "Failed to assign vendor");
+  }
+
+  console.log("✅ sendOrderToVendor SUCCESS:", data);
+  return data;
 }
 
 // Admin updates order status
 export async function adminUpdateOrderStatus(orderId, status) {
   const res = await fetch(`${API_BASE}/orders/${orderId}/status`, {
     method: "PUT",
-    headers: getAuthHeaders(),
+    headers: {
+      ...getAuthHeaders(),
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({ status }),
   });
-  if (!res.ok) throw new Error("Failed to update order status");
-  return normalize(res);
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(
+      `Failed to update order status: ${errData.message || res.statusText}`
+    );
+  }
+
+  const data = await res.json();
+  return normalize ? normalize(data) : data;
 }
 
 // Vendor updates order status

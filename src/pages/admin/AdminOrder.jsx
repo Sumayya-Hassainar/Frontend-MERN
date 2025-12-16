@@ -1,4 +1,3 @@
-// src/pages/admin/AdminOrders.jsx
 import { useEffect, useState } from "react";
 import {
   fetchAllOrders,
@@ -12,7 +11,9 @@ export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [assigning, setAssigning] = useState(null);
 
+  // Load orders + vendors
   useEffect(() => {
     loadData();
   }, []);
@@ -20,67 +21,55 @@ export default function AdminOrders() {
   async function loadData() {
     try {
       setLoading(true);
-
-      // Fetch orders + vendors at same time
-      const [orderRes, vendorRes] = await Promise.all([
+      const [ordersRes, vendorsRes] = await Promise.all([
         fetchAllOrders(),
         fetchVendors(),
-
       ]);
 
-      // Normalize responses safely
-      const ordersData = Array.isArray(orderRes?.data)
-        ? orderRes.data
-        : orderRes || [];
-
-      let vendorsData = Array.isArray(vendorRes?.data)
-        ? vendorRes.data
-        : vendorRes || [];
-
-      // ❌ REMOVE FILTER THAT DELETES ALL VENDORS
-      // vendorsData = vendorsData.filter((v) => v.status === "approved");
-
-      // Debug
-      console.log("FINAL VENDORS:", vendorsData);
-
-      setOrders(ordersData);
-      setVendors(vendorsData);
+      setOrders(Array.isArray(ordersRes) ? ordersRes : ordersRes.data || []);
+      setVendors(Array.isArray(vendorsRes) ? vendorsRes : vendorsRes.data || []);
     } catch (err) {
       console.error("LOAD ERROR:", err);
-      alert("Failed to load admin data");
-      setOrders([]);
-      setVendors([]);
+      alert(err.message || "Failed to load admin data");
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleAssignVendor(orderId, vendorId) {
-    try {
-      await sendOrderToVendor(orderId, vendorId);
+  /* ================= ASSIGN VENDOR ================= */
+const handleAssignVendor = async (orderId, vendorId) => {
+  if (!vendorId) return;
 
-      const vendor = vendors.find((v) => v._id === vendorId) || null;
+  try {
+    setAssigning(orderId); // disable dropdown while assigning
+    const res = await sendOrderToVendor(orderId, vendorId);
 
-      setOrders((prev) =>
-        prev.map((o) => (o._id === orderId ? { ...o, vendor } : o))
-      );
-    } catch (err) {
-      console.error("ASSIGN ERROR:", err);
-      alert("Vendor assignment failed");
-    }
+    setOrders(prev =>
+      prev.map(o =>
+        o._id === orderId ? { ...o, vendor: res.order.vendor } : o
+      )
+    );
+
+    alert("Vendor assigned successfully");
+  } catch (err) {
+    console.error("❌ ASSIGN ERROR:", err);
+    alert(err.message || "Failed to assign vendor");
+  } finally {
+    setAssigning(null);
   }
+};
 
-  async function handleOrderDelete(id) {
+  /* ================= DELETE ORDER ================= */
+  const handleOrderDelete = async (id) => {
     if (!confirm("Delete this order?")) return;
-
     try {
       await deleteOrder(id);
       setOrders((prev) => prev.filter((o) => o._id !== id));
     } catch (err) {
       console.error("DELETE ERROR:", err);
-      alert("Order deletion failed");
+      alert(err.message || "Failed to delete order");
     }
-  }
+  };
 
   if (loading) return <div className="p-6">Loading...</div>;
 
@@ -102,7 +91,7 @@ export default function AdminOrders() {
         <tbody>
           {orders.length === 0 ? (
             <tr>
-              <td colSpan="6" className="text-center p-4">
+              <td colSpan="6" className="p-4 text-center">
                 No orders found
               </td>
             </tr>
@@ -115,31 +104,28 @@ export default function AdminOrders() {
                   {o.vendor?.shopName || o.vendor?.name || "Not Assigned"}
                 </td>
 
-                {/* SELECT VENDOR */}
                 <td className="border p-2">
                   <select
+                    disabled={assigning === o._id}
                     value={o.vendor?._id || ""}
                     onChange={(e) => handleAssignVendor(o._id, e.target.value)}
                     className="border p-1 rounded"
                   >
                     <option value="">Select Vendor</option>
-
                     {vendors.map((v) => (
                       <option key={v._id} value={v._id}>
-                        {v.shopName || v.name || v.vendorName || v._id}
+                        {v.shopName || v.name}
                       </option>
                     ))}
                   </select>
                 </td>
 
-                {/* HANDLE */}
                 <td className="border p-2 text-center">
                   <Link to={`/admin/orders/${o._id}/handle`}>
                     <button className="text-blue-600 underline">Handle</button>
                   </Link>
                 </td>
 
-                {/* DELETE */}
                 <td className="border p-2 text-center">
                   <button
                     className="text-red-600 underline"
@@ -153,14 +139,6 @@ export default function AdminOrders() {
           )}
         </tbody>
       </table>
-
-      <div className="text-right mt-4">
-        <Link to="/admin/status-master">
-          <button className="px-4 py-2 bg-gray-800 text-white rounded">
-            Manage Order Status Master
-          </button>
-        </Link>
-      </div>
     </div>
   );
 }
