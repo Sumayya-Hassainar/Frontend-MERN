@@ -41,23 +41,22 @@ const handleAssignVendor = async (orderId, vendorId) => {
   if (!vendorId) return;
 
   try {
-    setAssigning(orderId); // disable dropdown while assigning
-    const res = await sendOrderToVendor(orderId, vendorId);
+    setAssigning(orderId);
+    const updatedOrder = await sendOrderToVendor(orderId, vendorId);
 
     setOrders(prev =>
-      prev.map(o =>
-        o._id === orderId ? { ...o, vendor: res.order.vendor } : o
-      )
+      prev.map(o => (o._id === orderId ? updatedOrder : o))
     );
 
     alert("Vendor assigned successfully");
   } catch (err) {
-    console.error("❌ ASSIGN ERROR:", err);
+    console.error("ASSIGN ERROR:", err);
     alert(err.message || "Failed to assign vendor");
   } finally {
     setAssigning(null);
   }
 };
+
 
   /* ================= DELETE ORDER ================= */
   const handleOrderDelete = async (id) => {

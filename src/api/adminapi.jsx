@@ -105,8 +105,9 @@ export async function sendOrderToVendor(orderId, vendorId) {
   }
 
   console.log("✅ sendOrderToVendor SUCCESS:", data);
-  return data;
+  return data.order; // <-- return only the updated order
 }
+
 
 // Admin updates order status
 export async function adminUpdateOrderStatus(orderId, status) {
