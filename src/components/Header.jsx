@@ -62,7 +62,7 @@ export default function Header({
       navigate("/search");
     }
   };
-    // THEME STATE
+  // THEME STATE
   const [theme, setTheme] = useState(
     () => localStorage.getItem("theme") || "light"
   );
@@ -90,9 +90,17 @@ export default function Header({
 
           {/* LOGO */}
           <Link to="/" className="flex items-center gap-2">
-            <span className="font-semibold text-xl">MarketVerse</span>
-            <span className="text-xs text-yellow-200">Explore Plus</span>
+            <img
+              src="https://www.shutterstock.com/image-vector/shop-point-logo-template-design-260nw-689055745.jpg"
+              alt="MarketVerse Logo"
+              className="h-10 w-auto object-contain"
+            />
+            <div className="flex flex-col">
+              <span className="font-semibold text-xl">MarketVerse</span>
+              <span className="text-xs text-yellow-200">Explore Plus</span>
+            </div>
           </Link>
+
 
           {/* SEARCH */}
           <div className="flex-1 flex max-w-md ml-4 relative">

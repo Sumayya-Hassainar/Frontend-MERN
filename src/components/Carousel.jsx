@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const slides = [
   {
@@ -26,6 +27,7 @@ const slides = [
 
 export default function Carousel() {
   const [current, setCurrent] = useState(0);
+  const navigate = useNavigate(); // <--- useNavigate hook
 
   useEffect(() => {
     const id = setInterval(
@@ -58,7 +60,10 @@ export default function Carousel() {
           <p className="text-sm sm:text-base text-gray-100 mb-3">
             {slide.text}
           </p>
-          <button className="bg-indigo-500 hover:bg-indigo-600 text-sm font-semibold px-4 py-2 rounded-md">
+          <button
+            onClick={() => navigate('/login')} // <--- navigate to login
+            className="bg-indigo-500 hover:bg-indigo-600 text-sm font-semibold px-4 py-2 rounded-md"
+          >
             Shop now
           </button>
         </div>
