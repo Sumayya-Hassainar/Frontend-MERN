@@ -30,6 +30,7 @@ export default function VendorOrders() {
     const loadOrders = async () => {
       try {
         setLoading(true);
+
         const ordersData = await fetchVendorOrders();
         setOrders(ordersData);
 
@@ -37,7 +38,8 @@ export default function VendorOrders() {
         await Promise.all(
           ordersData.map(async (order) => {
             try {
-              statusesMap[order._id] = await fetchOrderStatuses(order._id);
+              const res = await fetchOrderStatuses(order._id);
+              statusesMap[order._id] = res?.data || [];
             } catch {
               statusesMap[order._id] = [];
             }
@@ -58,16 +60,21 @@ export default function VendorOrders() {
   /* ================= CREATE STATUS ================= */
   const handleCreate = async () => {
     if (!selectedOrderId || !newStatus) {
-      return alert("Select order and status");
+      alert("Select order and status");
+      return;
     }
 
     const exists = (statuses[selectedOrderId] || []).some(
       (s) => s.status.toLowerCase() === newStatus.toLowerCase()
     );
-    if (exists) return alert("Status already exists for this order");
+    if (exists) {
+      alert("Status already exists for this order");
+      return;
+    }
 
     try {
       setCreating(true);
+
       const res = await createVendorOrderStatus({
         orderId: selectedOrderId,
         status: newStatus,
@@ -89,7 +96,10 @@ export default function VendorOrders() {
 
   /* ================= UPDATE STATUS ================= */
   const handleUpdate = async (orderId, statusId, value) => {
-    if (!value.trim()) return alert("Status cannot be empty");
+    if (!value.trim()) {
+      alert("Status cannot be empty");
+      return;
+    }
 
     try {
       const res = await updateVendorOrderStatus(statusId, {
@@ -113,6 +123,7 @@ export default function VendorOrders() {
 
     try {
       await deleteVendorOrderStatus(statusId);
+
       setStatuses((prev) => ({
         ...prev,
         [orderId]: prev[orderId].filter((s) => s._id !== statusId),
@@ -128,7 +139,7 @@ export default function VendorOrders() {
     <div className="max-w-7xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-6">Vendor Orders</h1>
 
-      {/* CREATE STATUS */}
+      {/* ================= CREATE STATUS ================= */}
       <div className="flex gap-3 mb-6">
         <select
           value={selectedOrderId}
@@ -146,7 +157,7 @@ export default function VendorOrders() {
         <select
           value={newStatus}
           onChange={(e) => setNewStatus(e.target.value)}
-          className="border px-3 py-2 "
+          className="border px-3 py-2"
         >
           <option value="">Select Status</option>
           {predefinedStatuses.map((status) => (
@@ -174,7 +185,7 @@ export default function VendorOrders() {
         </button>
       </div>
 
-      {/* ORDERS TABLE */}
+      {/* ================= ORDERS TABLE ================= */}
       <div className="overflow-x-auto">
         <table className="w-full border text-sm">
           <thead className="bg-gray-100">
@@ -186,23 +197,30 @@ export default function VendorOrders() {
               <th className="p-2">Statuses</th>
             </tr>
           </thead>
+
           <tbody>
             {orders.map((o) => (
               <tr key={o._id} className="border-t align-top">
                 <td className="p-2">{o._id}</td>
+
                 <td className="p-2">
                   {o.customer?.name}
                   <br />
                   <small>{o.customer?.email}</small>
                 </td>
+
                 <td className="p-2">
-                  {o.products.map((p) => (
-                    <div key={p.product?._id || p.product?.name}>
+                  {o.products.map((p, index) => (
+                    <div
+                      key={`${o._id}-${p.product?._id || index}`}
+                    >
                       {p.product?.name} × {p.quantity}
                     </div>
                   ))}
                 </td>
+
                 <td className="p-2">₹{o.totalAmount}</td>
+
                 <td className="p-2 space-y-2">
                   {(statuses[o._id] || []).map((s) => (
                     <div key={s._id} className="flex gap-2 items-center">
@@ -220,12 +238,16 @@ export default function VendorOrders() {
                         }
                         className="border px-2 py-1 text-xs"
                       />
+
                       <button
-                        onClick={() => handleUpdate(o._id, s._id, s.status)}
+                        onClick={() =>
+                          handleUpdate(o._id, s._id, s.status)
+                        }
                         className="bg-blue-600 text-white px-2 py-1 text-xs rounded"
                       >
                         Update
                       </button>
+
                       <button
                         onClick={() => handleDelete(o._id, s._id)}
                         className="bg-red-600 text-white px-2 py-1 text-xs rounded"
@@ -234,8 +256,11 @@ export default function VendorOrders() {
                       </button>
                     </div>
                   ))}
+
                   {(statuses[o._id] || []).length === 0 && (
-                    <span className="text-gray-400 text-xs">No status</span>
+                    <span className="text-gray-400 text-xs">
+                      No status
+                    </span>
                   )}
                 </td>
               </tr>

@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
+import { CheckCircle2 } from "lucide-react";
 
 import {
   selectCartItems,
@@ -82,30 +83,65 @@ export default function PaymentPage() {
   // COD confirmation screen
   if (orderSuccess && paymentMethod === "cod") {
     return (
-      <div className="max-w-2xl mx-auto p-6 space-y-6 text-center">
-        <h1 className="text-2xl font-semibold text-green-600">Order Placed!</h1>
-        <p className="text-gray-700">
-          Your order <span className="font-medium">#{orderSuccess._id}</span> has been placed successfully.
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+      <div className="w-full max-w-sm bg-white rounded-3xl shadow-xl p-8 text-center">
+        {/* Success Icon */}
+        <div className="flex justify-center mb-4">
+          <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
+            <CheckCircle2 className="w-12 h-12 text-green-600" />
+          </div>
+        </div>
+
+        {/* Title */}
+        <h1 className="text-xl font-semibold text-gray-800">Success</h1>
+        <p className="text-sm text-gray-600 mt-2">
+          Order placed successfully. Kindly check your order book to view status.
         </p>
-        <p className="text-gray-600">
-          Total Amount: ₹{orderSuccess.totalAmount.toFixed(2)}
-        </p>
-        <div className="bg-white border rounded-lg p-5 text-left">
-          <h2 className="text-sm font-semibold text-gray-700 mb-2">Shipping Address</h2>
-          <p className="font-medium">{orderSuccess.shippingAddress.fullName}</p>
-          <p className="text-sm text-gray-600">{orderSuccess.shippingAddress.street}</p>
-          <p className="text-sm text-gray-600">
+
+        {/* Order Info */}
+        <div className="mt-6 text-sm text-left space-y-2">
+          <p className="text-gray-700">
+            <span className="font-medium">Order ID:</span> #{orderSuccess._id}
+          </p>
+          <p className="text-gray-700">
+            <span className="font-medium">Total:</span> ₹{orderSuccess.totalAmount.toFixed(2)}
+          </p>
+        </div>
+
+        {/* Shipping */}
+        <div className="mt-4 bg-gray-50 rounded-xl p-4 text-left">
+          <h2 className="text-xs font-semibold text-gray-500 mb-1">SHIPPING ADDRESS</h2>
+          <p className="text-sm font-medium text-gray-800">
+            {orderSuccess.shippingAddress.fullName}
+          </p>
+          <p className="text-xs text-gray-600">
+            {orderSuccess.shippingAddress.street}
+          </p>
+          <p className="text-xs text-gray-600">
             {orderSuccess.shippingAddress.city}, {orderSuccess.shippingAddress.state} - {orderSuccess.shippingAddress.pincode}
           </p>
-          <p className="text-sm text-gray-600">Phone: {orderSuccess.shippingAddress.phone}</p>
+          <p className="text-xs text-gray-600">Phone: {orderSuccess.shippingAddress.phone}</p>
         </div>
+
+        {/* Actions */}
         <button
-          onClick={() => navigate("/orders", { state: { newOrder: orderSuccess } })}
-          className="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-medium"
+          onClick={() => navigate("/orders")}
+          className="mt-6 w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-full font-medium transition"
         >
-          View My Orders
+          View Order
+        </button>
+
+        <button
+          onClick={() => navigate("/")}
+          className="mt-3 text-sm text-green-600 font-medium"
+        >
+          Done
         </button>
       </div>
+    </div>
+  
+
+
     );
   }
 
