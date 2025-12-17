@@ -81,4 +81,32 @@ export async function markAllNotificationsAsRead() {
   return handleJsonResponse(res, "Failed to mark all notifications as read");
 }
 
+/* ================= ADMIN NOTIFICATIONS ================= */
+
+// ✅ GET /api/notifications  (admin)
+export async function fetchNotifications() {
+  const res = await fetch(`${API_BASE}/notifications`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+  });
+
+  return handleJsonResponse(res, "Failed to fetch notifications");
+}
+
+// ✅ POST /api/notifications   (admin)
+export async function createNotification(payload) {
+  const res = await fetch(`${API_BASE}/notifications`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  return handleJsonResponse(res, "Failed to create notification");
+}
 
