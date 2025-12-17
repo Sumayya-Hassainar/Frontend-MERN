@@ -8,25 +8,25 @@ import {
   rejectVendorRequest,
 } from "../../api/adminapi";
 
-import {
-  fetchNotifications,
-  createNotification,
-} from "../../api/accountapi";
+import { createNotification } from "../../api/accountapi";
 
 export default function AdminPanel() {
+  /* ================= STATE ================= */
   const [requests, setRequests] = useState([]);
-  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [title, setTitle] = useState("");
+  // Notification form state
+  const [recipient, setRecipient] = useState("");
+  const [recipientModel, setRecipientModel] = useState("User");
+  const [type, setType] = useState("System");
   const [message, setMessage] = useState("");
 
   const navigate = useNavigate();
 
-  // ================= VENDOR REQUESTS =================
+  /* ================= VENDOR REQUESTS ================= */
 
   const loadRequests = async () => {
     setLoading(true);
@@ -44,7 +44,6 @@ export default function AdminPanel() {
 
   useEffect(() => {
     loadRequests();
-    loadNotifications();
   }, []);
 
   const handleApprove = async (id) => {
@@ -83,39 +82,37 @@ export default function AdminPanel() {
     navigate("/admin");
   };
 
-  // ================= NOTIFICATIONS =================
-
-  const loadNotifications = async () => {
-    try {
-      const data = await fetchNotifications();
-      setNotifications(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Failed to load notifications:", err);
-    }
-  };
+  /* ================= NOTIFICATIONS ================= */
 
   const handleCreateNotification = async (e) => {
     e.preventDefault();
 
-    if (!title.trim() || !message.trim()) {
-      alert("Title and message are required");
+    if (!recipient.trim() || !message.trim()) {
+      alert("Recipient and message are required");
       return;
     }
 
     setNotifLoading(true);
     try {
-      await createNotification({ title, message });
-      setTitle("");
+      await createNotification({
+        recipient,
+        recipientModel,
+        message,
+        type,
+      });
+
+      setRecipient("");
       setMessage("");
-      loadNotifications();
-      alert("✅ Notification created successfully!");
+      alert("✅ Notification sent successfully");
     } catch (err) {
       console.error(err);
-      alert("❌ Failed to create notification");
+      alert(err.message || "❌ Failed to send notification");
     } finally {
       setNotifLoading(false);
     }
   };
+
+  /* ================= UI ================= */
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
@@ -124,7 +121,7 @@ export default function AdminPanel() {
         <div>
           <h1 className="text-2xl font-semibold mb-1">Admin Panel</h1>
           <p className="text-gray-600 text-sm">
-            Review vendor requests and manage platform notifications.
+            Review vendor requests and send system notifications.
           </p>
         </div>
         <button
@@ -152,9 +149,7 @@ export default function AdminPanel() {
         </div>
 
         {requests.length === 0 && !loading ? (
-          <p className="text-sm text-gray-600">
-            No pending vendor requests.
-          </p>
+          <p className="text-sm text-gray-600">No pending vendor requests.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm border">
@@ -202,52 +197,55 @@ export default function AdminPanel() {
         )}
       </section>
 
-      {/* ================= NOTIFICATIONS ================= */}
+      {/* ================= SEND NOTIFICATION ================= */}
       <section className="bg-white border rounded-lg p-4">
-        <h2 className="text-lg font-semibold mb-3">Notifications</h2>
+        <h2 className="text-lg font-semibold mb-3">Send Notification</h2>
 
-        <form onSubmit={handleCreateNotification} className="mb-4 space-y-2">
+        <form onSubmit={handleCreateNotification} className="space-y-3">
+          <select
+            value={recipientModel}
+            onChange={(e) => setRecipientModel(e.target.value)}
+            className="w-full border px-3 py-2 rounded"
+          >
+            <option value="User">User</option>
+            <option value="Vendor">Vendor</option>
+          </select>
+
           <input
             type="text"
-            placeholder="Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Recipient ID"
+            value={recipient}
+            onChange={(e) => setRecipient(e.target.value)}
             className="w-full border px-3 py-2 rounded"
+            required
           />
+
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+            className="w-full border px-3 py-2 rounded"
+          >
+            <option value="System">System</option>
+            <option value="Order">Order</option>
+            <option value="Payment">Payment</option>
+          </select>
+
           <textarea
             placeholder="Message"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             className="w-full border px-3 py-2 rounded"
+            required
           />
+
           <button
             type="submit"
             disabled={notifLoading}
-            className="bg-indigo-600 text-white px-4 py-2 rounded"
+            className="bg-indigo-600 text-white px-4 py-2 rounded disabled:opacity-50"
           >
-            Create Notification
+            {notifLoading ? "Sending..." : "Send Notification"}
           </button>
         </form>
-
-        <ul className="space-y-2">
-          {notifications.map((n) => (
-            <li
-              key={n._id}
-              className={`p-3 border rounded ${
-                n.read ? "bg-gray-100" : "bg-yellow-100"
-              }`}
-            >
-              <strong>{n.title}</strong>
-              <p>{n.message}</p>
-              <small className="text-gray-500">
-                {new Date(n.createdAt).toLocaleString()}
-              </small>
-            </li>
-          ))}
-          {notifications.length === 0 && (
-            <p className="text-sm text-gray-600">No notifications yet.</p>
-          )}
-        </ul>
       </section>
     </div>
   );

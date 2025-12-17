@@ -219,3 +219,15 @@ export async function updateUserRole(userId, role) {
   if (!res.ok) throw new Error("Failed to update user role");
   return normalize(res);
 }
+
+export async function createNotification(payload) {
+  const res = await fetch(`${API_BASE}/notifications`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to create notification");
+  return data;
+}
